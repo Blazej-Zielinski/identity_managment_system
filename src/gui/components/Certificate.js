@@ -1,4 +1,4 @@
-import React, {useState} from "react";
+import React, {useState, useContext} from "react";
 import {styled} from '@mui/material/styles';
 import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
@@ -7,11 +7,22 @@ import CardActions from '@mui/material/CardActions';
 import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
-import ShareIcon from '@mui/icons-material/Share';
+import {green} from '@mui/material/colors';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import {Grid} from "@mui/material";
+import {Alert, Avatar, Box, Grid, Paper, Snackbar, Tooltip} from "@mui/material";
 import Divider from "@mui/material/Divider";
+import CheckIcon from '@mui/icons-material/Check';
+import {camelcaseToWords} from "../utils/StringFunctions"
+import {certificateIconPicker} from "../utils/IconPicker"
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import Button from "@mui/material/Button";
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import {SizedAvatar} from "../utils/StyledComponents";
+import {ipfs,CertificatesContext} from "../App";
+import {encryptSYM} from "../utils/CryptoFunctions";
 
 const ExpandMore = styled((props) => {
   const {expand, ...other} = props;
@@ -24,69 +35,147 @@ const ExpandMore = styled((props) => {
   }),
 }));
 
-export default function Certificate({data}) {
-  const [expanded, setExpanded] = useState(false);
+export default function Certificate({address, data, isCertificateAccepted = true}) {
+  const [expanded, setExpanded] = useState(false)
+  const [openDialog, setOpenDialog] = useState(false)
+  const [snackbarOpen, setSnackbarOpen] = useState(false)
+  const {certificateStorage} = useContext(CertificatesContext)
 
-  const handleExpandClick = () => {
-    setExpanded(!expanded);
-  };
+  async function acceptCertificate() {
+    console.log(data)
+
+    Object.entries(data.decryptedCertificate.state).map(el => console.log(el))
+
+    const {decryptedCertificate, signature, nonce, id} = data
+    //todo
+    const userPrivateKey = "yhksXY5rKT9k+RumMtqQJ2sdCAfFin1VzmAnqc9eOU8zC7vzAt/i8gvo+JouRAM2jp04jMzf/CmWl3eQ3ZcRZg=="
+
+    // User encrypts certificate
+    const encryptedData = encryptSYM({decryptedCertificate, signature, nonce}, userPrivateKey)
+
+    // Adding certificate to ipfs
+    const cid = await ipfs.add(JSON.stringify(encryptedData))
+
+    certificateStorage.methods.acceptCertificate(id, cid.path)
+      .send({from: address})
+      .on('transactionHash', () => {
+        setSnackbarOpen(true)
+      })
+  }
 
   return (
     <Card raised={true} sx={{width: 700}}>
       <CardHeader
-        avatar={<AccountBalanceIcon fontSize="large"/>}
+        avatar={
+          <Avatar variant="rounded">
+            {certificateIconPicker(data.decryptedCertificate.type)}
+          </Avatar>
+        }
         action={
-          <IconButton aria-label="share">
-            <ShareIcon/>
-          </IconButton>
+          <SizedAvatar size={4} sx={{backgroundColor: green[500]}}>
+            <CheckIcon/>
+          </SizedAvatar>
         }
         title={
           <Typography variant="h6">
-            {data.title}
+            {data.decryptedCertificate.type}
           </Typography>
         }
       />
-      <CardContent>
-        <Grid container spacing={2}>
-          <Grid item xs={6}>
-            <Typography variant="body2" color="text.secondary">
-              Sign by: {data.signBy}
-            </Typography>
-          </Grid>
-          <Grid item xs={6}>
-            <Typography variant="body2" color="text.secondary">
-              Signature: {data.signature}
-            </Typography>
-          </Grid>
-        </Grid>
-      </CardContent>
       <Collapse in={expanded} timeout="auto" unmountOnExit>
-        <Divider />
+        <Divider/>
         <CardContent>
           <Grid container spacing={2}>
-            {/*{*/}
-            {/*  // todo*/}
-            {/*  data.extras.map((item,idx) =>*/}
-            {/*    <Grid item xs={6} key={idx}>*/}
-            {/*      <Typography variant="body2" color="text.secondary">*/}
-            {/*        {item}*/}
-            {/*      </Typography>*/}
-            {/*    </Grid>*/}
-            {/*  )*/}
-            {/*}*/}
+            {
+              Object.entries(data.decryptedCertificate.state).map(([property, value], idx) =>
+                <Grid item xs={6} key={idx}>
+                  <Typography variant="body2" color="text.secondary">
+                    {`${camelcaseToWords(property)}: ${value}`}
+                  </Typography>
+                </Grid>
+              )
+            }
           </Grid>
         </CardContent>
       </Collapse>
       <CardActions disableSpacing>
+        {!isCertificateAccepted &&
+        <Button
+          variant={"text"}
+          size={"small"}
+          onClick={acceptCertificate}>
+          Accept Certificate
+        </Button>
+        }
+        <Tooltip title="Open signature">
+          <IconButton aria-label="add to favorites" onClick={() => setOpenDialog(true)}>
+            <AssignmentIcon/>
+          </IconButton>
+        </Tooltip>
         <ExpandMore
           expand={expanded}
-          onClick={handleExpandClick}
+          onClick={() => setExpanded(!expanded)}
           aria-expanded={expanded}
           aria-label="show more"
         >
           <ExpandMoreIcon/>
         </ExpandMore>
       </CardActions>
+
+      {/*Dialog window*/}
+      <Dialog open={openDialog} maxWidth="md" onClose={() => setOpenDialog(false)}>
+        <DialogTitle>Certificate signature</DialogTitle>
+        <DialogContent>
+          <Typography variant="overline">
+            Sign by
+          </Typography>
+          <Paper variant="outlined" sx={{p: 2, mb: 3}}>
+            <Tooltip title="Copy to clipboard" placement="top">
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => {
+                  navigator.clipboard.writeText("")
+                }}>
+                {/*todo write organization name*/}
+                {`Organization`}
+              </Button>
+            </Tooltip>
+          </Paper>
+          <Typography variant="overline">
+            Signature
+          </Typography>
+          <Paper variant="outlined" sx={{p: 2, mb: 3}}>
+            <Tooltip title="Copy to clipboard" placement="top">
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => {
+                  navigator.clipboard.writeText(data.signature)
+                }}>
+                {data.signature}
+              </Button>
+            </Tooltip>
+          </Paper>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/*Snackbar*/}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}>
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity="success"
+          variant="filled"
+          sx={{width: '100%'}}>
+          Certificate Accepted
+        </Alert>
+      </Snackbar>
     </Card>
   );
 }

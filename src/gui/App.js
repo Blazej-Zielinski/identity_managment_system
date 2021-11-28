@@ -13,7 +13,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
-import {createsKeyPair, decryptASYN, verifySignature} from "./utils/CryptoFunctions";
+import {createsKeyPair, decryptASYN, verifySignature, decryptSYM} from "./utils/CryptoFunctions";
 import {nextWeek} from "./utils/DateFunctions";
 import Typography from "@mui/material/Typography";
 import {Alert, Paper, Snackbar, Tooltip} from "@mui/material";
@@ -35,9 +35,9 @@ const ACTIONS = {
   PUBLIC_KEY_SAVED: "public_key_saved",
   CLOSE_SNACKBAR: "close_snackbar",
   LOADING: "loading",
-  SET_CERTIFICATES: "set_certificates",
+  SET_BLOCKCHAIN_CERTIFICATES: "set_blockchain_certificates",
   SET_AWAITING_CERTIFICATES: "set_awaiting_certificates",
-  SET_JSON_CERTIFICATES: "set_json_certificates",
+  SET_CERTIFICATES: "set_certificates",
   ACCOUNT_DISCONNECTED: "account_disconnected"
 }
 
@@ -78,28 +78,28 @@ function reducer(state, action) {
         ...state,
         address: action.payload
       }
-    case ACTIONS.SET_CERTIFICATES:
+    case ACTIONS.SET_BLOCKCHAIN_CERTIFICATES:
       return {
         ...state,
-        certificates: [...state.certificates, action.payload]
+        blockchainCertificates: [...state.blockchainCertificates, action.payload]
       }
     case ACTIONS.SET_AWAITING_CERTIFICATES:
       return {
         ...state,
         awaitingCertificates: [...state.awaitingCertificates, action.payload]
       }
-    case ACTIONS.SET_JSON_CERTIFICATES:
+    case ACTIONS.SET_CERTIFICATES:
       return {
         ...state,
-        certificatesJSON: [...state.certificatesJSON, action.payload]
+        certificates: [...state.certificates, action.payload]
       }
     case ACTIONS.ACCOUNT_DISCONNECTED:
       return {
         address: "",
         publicKey: "",
-        certificates: [],
+        blockchainCertificates: [],
         awaitingCertificates: [],
-        certificatesJSON: [],
+        certificates: [],
         generatedKeys: {},
         isNewUser: false,
         loading: false,
@@ -116,9 +116,9 @@ function App() {
   const [state, dispatch] = useReducer(reducer, {
     address: "",
     publicKey: "",
-    certificates: [], // blockchain certificates
+    blockchainCertificates: [], // blockchain certificates
     awaitingCertificates: [], // certificates not yet accepted by user, ( they need to be encrypted by user )
-    certificatesJSON: [], // user certificates
+    certificates: [], // user certificates
     generatedKeys: {},
     isNewUser: false,
     loading: false,
@@ -208,61 +208,64 @@ function App() {
       // Load certificates
       for (const id of Object.values(userCertificatesIDs)) {
         const certificate = await certificatesStorage.methods.certificates(id).call()
-        dispatch({type: ACTIONS.SET_CERTIFICATES, payload: certificate})
+        dispatch({type: ACTIONS.SET_BLOCKCHAIN_CERTIFICATES, payload: certificate})
 
         // Getting issuer public key
         const issuerPublicKey = await keysProvider.methods.publicKeys(certificate.issuer).call()
 
-        axios.get(`https://ipfs.infura.io/ipfs/${certificate.ipfsHash}`)
-          .then(response => {
-            const {encryptedCertificate, signature} = response.data
+        if(certificate.isAccepted) {
+          // certificates encrypted by user
 
-            const decryptedCertificate = decryptASYN(encryptedCertificate, issuerPublicKey, cookie.userPrivateKey)
-            const isCertificateVerify = verifySignature(decryptedCertificate, signature, issuerPublicKey)
-            console.log({decryptedCertificate})
-            console.log({isCertificateVerify})
-            dispatch({type: ACTIONS.SET_JSON_CERTIFICATES, payload: response.data})
-          })
+          // Getting encrypted certificate from ipfs
+          axios.get(`https://ipfs.infura.io/ipfs/${certificate.ipfsHash}`)
+            .then(response => {
+              const encryptedCertificate = response.data
+              //todo
+              const userPrivateKey = "yhksXY5rKT9k+RumMtqQJ2sdCAfFin1VzmAnqc9eOU8zC7vzAt/i8gvo+JouRAM2jp04jMzf/CmWl3eQ3ZcRZg=="
+
+              const {decryptedCertificate, signature, nonce} = decryptSYM(encryptedCertificate, userPrivateKey)
+              const isCertificateVerify = verifySignature({decryptedCertificate, nonce}, signature, issuerPublicKey)
+
+              // check if signature is correct
+              if (!isCertificateVerify) return
+
+              // Add only certificates with correct signature
+              dispatch({type: ACTIONS.SET_CERTIFICATES, payload: {id, decryptedCertificate, signature, nonce}})
+            })
+
+        }else {
+          // new certificates, encrypted by certificates authority
+
+          // Getting encrypted certificate from ipfs
+          axios.get(`https://ipfs.infura.io/ipfs/${certificate.ipfsHash}`)
+            .then(response => {
+              const {encryptedCertificate, signature} = response.data
+
+              const decryptedCertificate = decryptASYN(encryptedCertificate, issuerPublicKey, cookie.userPrivateKey)
+              const isCertificateVerify = verifySignature(decryptedCertificate, signature, issuerPublicKey)
+
+              // check if signature is correct
+              if (!isCertificateVerify) return
+
+              // Add only certificates with correct signature
+              dispatch({type: ACTIONS.SET_AWAITING_CERTIFICATES, payload: {id, decryptedCertificate, signature, nonce: encryptedCertificate.nonce}})
+            })
+        }
       }
     } else {
       window.alert("CertificatesStore or KeysProvider contract not deployed to detected network")
     }
-
-    // todo to delete
-    // if (dataKP) {
-    //   const keysProvider = new web3.eth.Contract(KeysProvider.abi, dataKP.address)
-    //   setKeysProvider(keysProvider)
-    //
-    //   const userPublicKey = await keysProvider.methods.publicKeys(accounts[0]).call()
-    //
-    //   if (userPublicKey === "") {
-    //     // new user
-    //     const keys = createsKeyPair()
-    //     dispatch({type: ACTIONS.NEW_USER, payload: keys})
-    //   } else {
-    //     dispatch({type: ACTIONS.SET_PUBLIC_KEY, payload: userPublicKey})
-    //   }
-    //
-    // } else {
-    //   window.alert("KeysProvider contract not deployed to detected network")
-    // }
   }
 
   function savePublicKey() {
     // save private key to blockchain
     dispatch({type: ACTIONS.LOADING})
 
-    keysProvider.methods.addKey(state.generatedKeys.publicKey).send({from: state.address}).on('transactionHash', () => {
+    keysProvider.methods.addKey(state.generatedKeys.publicKey).send({from: state.address})
+      .on('transactionHash', () => {
       setCookie(COOKIE_NAME, state.generatedKeys.secretKey, {path: '/', expires: nextWeek()});
-
       dispatch({type: ACTIONS.PUBLIC_KEY_SAVED, payload: state.generatedKeys.publicKey})
     })
-
-
-    // // todo delete ( for testing purposes )
-    // setTimeout(() => {
-    //   dispatch({type: ACTIONS.PUBLIC_KEY_SAVED, payload: state.generatedKeys.publicKey})
-    // }, 1000)
   }
 
   return (
@@ -345,7 +348,8 @@ function App() {
           <CertificatesContext.Provider value={{certificateStorage, keysProvider}}>
             <Account
               address={state.address}
-              certificates={state.certificatesJSON}/>
+              certificates={state.certificates}
+              awaitingCertificates={state.awaitingCertificates}/>
           </CertificatesContext.Provider>
         </Route>
         <Route exact path="*">

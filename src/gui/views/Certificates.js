@@ -3,7 +3,7 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Certificate from "../components/Certificate";
 
-export default function Certificates({certificates}) {
+export default function Certificates({address, certificates}) {
   return (
     <Box>
       <Typography variant="h3">
@@ -20,7 +20,7 @@ export default function Certificates({certificates}) {
         }}
       >
         {
-          certificates.map((data,idx) => <Certificate data={data} key={idx}/>)
+          certificates.map((data,idx) => <Certificate address={address} data={data} key={idx}/>)
         }
       </Box>
     </Box>

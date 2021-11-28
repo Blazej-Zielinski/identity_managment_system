@@ -13,7 +13,7 @@ import IssueCertificate from "./IssueCertificate";
 
 const drawerWidth = 240;
 
-export default function Account({address, certificates}) {
+export default function Account({address, certificates, awaitingCertificates}) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -49,6 +49,7 @@ export default function Account({address, certificates}) {
         drawerWidth={drawerWidth}
         mobileOpen={mobileOpen}
         handleDrawerToggle={handleDrawerToggle}
+        notifications={awaitingCertificates.length}
       />
 
       {/* Main */}
@@ -61,13 +62,13 @@ export default function Account({address, certificates}) {
       >
         <Switch>
           <Route path={`${path}/certificates`}>
-            <Certificates certificates={certificates}/>
+            <Certificates address={address} certificates={certificates}/>
           </Route>
           <Route path={`${path}/profile`}>
             <Profile/>
           </Route>
           <Route path={`${path}/notifications`}>
-            <NotificationsPage/>
+            <NotificationsPage address={address} awaitingCertificates={awaitingCertificates}/>
           </Route>
           <Route path={`${path}/issueCertificate`}>
             <IssueCertificate address={address}/>

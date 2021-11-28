@@ -44,7 +44,7 @@ export default function CertificateForm({address, type, fields}) {
     // Adding certificate to ipfs
     const cid = await ipfs.add(JSON.stringify({encryptedCertificate, signature}))
 
-    certificateStorage.methods.createCertificate(receiverAddress, cid.path, signature)
+    certificateStorage.methods.createCertificate(receiverAddress, cid.path)
       .send({from: address})
       .on('transactionHash', () => {
         setSnackbarOpen(true)

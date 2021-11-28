@@ -5,6 +5,7 @@ import {Tab} from "@mui/material";
 import {TabContext, TabList, TabPanel} from "@mui/lab";
 import {DrivingLicence, ID, Passport, StudentCard} from "../assets/CertificateSchemes"
 import CertificateForm from "../components/CertificateForm";
+import {CERTIFICATE_TYPE} from "../utils/IconPicker";
 
 export default function IssueCertificate({address}) {
   const [value, setValue] = useState('2');
@@ -26,16 +27,16 @@ export default function IssueCertificate({address}) {
             </TabList>
           </Box>
           <TabPanel value="1">
-            <CertificateForm address={address} type={"ID"} fields={Object.keys(new ID())}/>
+            <CertificateForm address={address} type={CERTIFICATE_TYPE.ID} fields={Object.keys(new ID())}/>
           </TabPanel>
           <TabPanel value="2">
-            <CertificateForm address={address} type={"Student Card"} fields={Object.keys(new StudentCard())}/>
+            <CertificateForm address={address} type={CERTIFICATE_TYPE.STUDENT_CARD} fields={Object.keys(new StudentCard())}/>
           </TabPanel>
           <TabPanel value="3">
-            <CertificateForm address={address} type={"Driving Licence"} fields={Object.keys(new DrivingLicence())}/>
+            <CertificateForm address={address} type={CERTIFICATE_TYPE.DRIVING_LICENCE} fields={Object.keys(new DrivingLicence())}/>
           </TabPanel>
           <TabPanel value="4">
-            <CertificateForm address={address} type={"Passport"} fields={Object.keys(new Passport())}/>
+            <CertificateForm address={address} type={CERTIFICATE_TYPE.PASSPORT} fields={Object.keys(new Passport())}/>
           </TabPanel>
         </TabContext>
       </Box>

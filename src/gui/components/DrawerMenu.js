@@ -53,7 +53,7 @@ const drawerElements = [
   },
 ]
 
-export default function DrawerMenu({window, address, drawerWidth, mobileOpen, handleDrawerToggle}) {
+export default function DrawerMenu({window, address, drawerWidth, mobileOpen, handleDrawerToggle, notifications}) {
   const [selectedItem, setSelectedItem] = useState(0);
   const classes = useStyles()
   const history = useHistory()
@@ -67,9 +67,6 @@ export default function DrawerMenu({window, address, drawerWidth, mobileOpen, ha
       }
     })
   }, [location, path])
-
-  // todo to delete
-  const notification = 4
 
   function handleListItemClick(endpoint, idx) {
     if (mobileOpen) {
@@ -105,8 +102,8 @@ export default function DrawerMenu({window, address, drawerWidth, mobileOpen, ha
             selected={selectedItem === idx + 1}>
             <ListItemIcon>
               {
-                idx === 2 && notification ?
-                  <Badge badgeContent={notification} color="primary">{icon}</Badge>
+                idx === 2 && notifications ?
+                  <Badge badgeContent={notifications} color="primary">{icon}</Badge>
                   :
                   icon
               }

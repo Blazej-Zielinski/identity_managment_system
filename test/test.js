@@ -30,10 +30,9 @@ contract('CertificatesStorage', ([issuer, owner]) => {
   describe('create certificate', async () => {
     let result, certificatesCount
     const ipfsHash = '123456'
-    const issuerSignature = '123abd456'
 
     before(async () => {
-      result = await certificatesStorage.createCertificate(owner, ipfsHash, issuerSignature, {from: issuer})
+      result = await certificatesStorage.createCertificate(owner, ipfsHash, {from: issuer})
       certificatesCount = await certificatesStorage.certificatesCount()
     })
 
@@ -46,17 +45,13 @@ contract('CertificatesStorage', ([issuer, owner]) => {
       assert.equal(event.issuer, issuer, 'issuer address is correct')
       assert.equal(event.owner, owner, 'owner address is correct')
       assert.equal(event.ipfsHash, ipfsHash, 'ipfsHash amount is correct')
-      assert.equal(event.issuerSignature, issuerSignature, 'signature is correct')
       assert.equal(event.isAccepted, false, 'isAccepted is correct')
 
       // FAILURE: Certificate must have owner
-      await certificatesStorage.createCertificate(0x0, ipfsHash, issuerSignature, {from: issuer}).should.be.rejected;
+      await certificatesStorage.createCertificate(0x0, ipfsHash, {from: issuer}).should.be.rejected;
 
       // FAILURE: Certificate must have ipfsHash
-      await certificatesStorage.createCertificate(owner, '', issuerSignature, {from: issuer}).should.be.rejected;
-
-      // FAILURE: Certificate must have issuer signature
-      await certificatesStorage.createCertificate(ipfsHash, owner, '', {from: issuer}).should.be.rejected;
+      await certificatesStorage.createCertificate(owner, '', {from: issuer}).should.be.rejected;
     })
 
     //check from certificates map
@@ -66,7 +61,6 @@ contract('CertificatesStorage', ([issuer, owner]) => {
       assert.equal(certificate.issuer, issuer, 'issuer address is correct')
       assert.equal(certificate.owner, owner, 'owner address is correct')
       assert.equal(certificate.ipfsHash, ipfsHash, 'ipfsHash amount is correct')
-      assert.equal(certificate.issuerSignature, issuerSignature, 'signature is correct')
       assert.equal(certificate.isAccepted, false, 'isAccepted is correct')
     })
   })
@@ -91,7 +85,6 @@ contract('CertificatesStorage', ([issuer, owner]) => {
       assert.equal(event.issuer, issuer, 'issuer address is correct')
       assert.equal(event.owner, owner, 'owner address is correct')
       assert.equal(event.ipfsHash, ipfsHash, 'ipfsHash amount is correct')
-      assert.equal(event.issuerSignature, '123abd456', 'signature is correct')
       assert.equal(event.isAccepted, true, 'isAccepted is correct')
 
       // FAILURE: Passed id must be correct
@@ -111,13 +104,29 @@ contract('CertificatesStorage', ([issuer, owner]) => {
       assert.equal(certificate.issuer, issuer, 'issuer address is correct')
       assert.equal(certificate.owner, owner, 'owner address is correct')
       assert.equal(certificate.ipfsHash, ipfsHash, 'ipfsHash amount is correct')
-      assert.equal(certificate.issuerSignature, '123abd456', 'signature is correct')
       assert.equal(certificate.isAccepted, true, 'isAccepted is correct')
     })
   })
+
+  describe('get user certificates IDs', async () => {
+    let result
+
+    before(async () => {
+      result = await certificatesStorage.getUserCertificatesIDs(owner, {from: owner})
+    })
+
+    it('should return user certificates', async () => {
+      // SUCCESS
+      assert.equal(result.length, 1, 'array length is correct')
+      assert.equal(result[0], 1, 'array items are correct')
+
+      // FAILURE: Passed address must exist
+      await certificatesStorage.getUserCertificatesIDs('', {from: owner}).should.be.rejected;
+    });
+  })
 })
 
-contract('PublicKeysProvider', ([address]) => {
+contract('PublicKeysProvider', ([deployer]) => {
   let publicKeysProvider
 
   before(async () => {
@@ -137,6 +146,11 @@ contract('PublicKeysProvider', ([address]) => {
       const name = await publicKeysProvider.name()
       assert.equal(name, 'PublicKeysProvider')
     })
+
+    it('has a certificates authority address', async () => {
+      const deployerAddress = await publicKeysProvider.certificatesAuthority()
+      assert.equal(deployerAddress, deployer, 'certificates authority address is correct')
+    })
   })
 
   describe('add key', async () => {
@@ -144,22 +158,22 @@ contract('PublicKeysProvider', ([address]) => {
     const publicKey = '123456'
 
     before(async () => {
-      result = await publicKeysProvider.addKey(publicKey, {from: address})
+      result = await publicKeysProvider.addKey(publicKey, {from: deployer})
     })
 
-    it('creates certificate', async () => {
+    it('should add key', async () => {
       // SUCCESS
       const event = result.logs[0].args
 
       assert.equal(event.publicKey, publicKey, 'key is correct')
 
       // FAILURE: Empty string passed
-      await publicKeysProvider.addKey('', {from: address}).should.be.rejected;
+      await publicKeysProvider.addKey('', {from: deployer}).should.be.rejected;
     })
 
     //check from certificates map
-    it('lists certificates', async () => {
-      const key = await publicKeysProvider.publicKeys(address)
+    it('should update key list', async () => {
+      const key = await publicKeysProvider.publicKeys(deployer)
       assert.equal(key, publicKey, 'key is correct')
     })
   })

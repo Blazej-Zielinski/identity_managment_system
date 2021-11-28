@@ -14,7 +14,6 @@ contract CertificatesStorage {
         address issuer;
         address owner;
         string ipfsHash;
-        string issuerSignature;
         bool isAccepted;
     }
 
@@ -23,7 +22,6 @@ contract CertificatesStorage {
         address issuer,
         address owner,
         string ipfsHash,
-        string issuerSignature,
         bool isAccepted
     );
 
@@ -32,12 +30,11 @@ contract CertificatesStorage {
         address issuer,
         address owner,
         string ipfsHash,
-        string issuerSignature,
         bool isAccepted
     );
 
     // Create certificate ( certificate awaits for acceptance by the owner )
-    function createCertificate(address _owner, string memory _ipfsHash, string memory _issuerSignature) public {
+    function createCertificate(address _owner, string memory _ipfsHash) public {
         // Make sure issuer address exists
         require(msg.sender != address(0x0));
 
@@ -47,20 +44,17 @@ contract CertificatesStorage {
         // Make sure the data hash exists
         require(bytes(_ipfsHash).length > 0);
 
-        // Make sure the issuer signature exists
-        require(bytes(_issuerSignature).length > 0);
-
         // Increment certificate id
         certificatesCount ++;
 
         // Add certificate to map
-        certificates[certificatesCount] = Certificate(certificatesCount, msg.sender, _owner, _ipfsHash, _issuerSignature, false);
+        certificates[certificatesCount] = Certificate(certificatesCount, msg.sender, _owner, _ipfsHash, false);
 
         // Add certificate id to userCertificatesIDs
         userCertificatesIDs[_owner].push(certificatesCount);
 
         // Trigger an event
-        emit CertificateCreated(certificatesCount, msg.sender, _owner, _ipfsHash, _issuerSignature, false);
+        emit CertificateCreated(certificatesCount, msg.sender, _owner, _ipfsHash, false);
     }
 
     function getUserCertificatesIDs(address _userAddress) public view returns(uint[] memory){
@@ -70,7 +64,6 @@ contract CertificatesStorage {
         return userCertificatesIDs[_userAddress];
     }
 
-    // todo to refactor
     function acceptCertificate(uint _id, string memory _ipfsHash) public {
         // Make sure msg.sender exists
         require(msg.sender != address(0x0));
@@ -91,16 +84,14 @@ contract CertificatesStorage {
         certificate.ipfsHash = _ipfsHash;
         certificate.isAccepted = true;
 
-        // Add certificate id to userCertificatesIDs todo this is to delete
-        userCertificatesIDs[msg.sender].push(_id);
-
         // Update certificate
         certificates[_id] = certificate;
 
         // Trigger an event
-        emit CertificateAccepted(_id, certificate.issuer, certificate.owner, _ipfsHash, certificate.issuerSignature, certificate.isAccepted);
+        emit CertificateAccepted(_id, certificate.issuer, certificate.owner, _ipfsHash, certificate.isAccepted);
     }
 
+    // todo to delete (no testing)
     function getCertificates() public view returns (string[] memory){
         // Make sure msg.sender exists
         require(msg.sender != address(0x0));
@@ -116,6 +107,7 @@ contract CertificatesStorage {
         return ipfsHashes;
     }
 
+    // todo to delete (no testing)
     function getAwaitingCertificates() public view returns (string[] memory){
         // Make sure msg.sender exists
         require(msg.sender != address(0x0));

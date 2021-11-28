@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 contract PublicKeysProvider {
     string public name = "PublicKeysProvider";
 
-    // certificates sign by this address are real
+    // certificates sign by this address are authentic
     address public certificatesAuthority;
 
     // public keys
