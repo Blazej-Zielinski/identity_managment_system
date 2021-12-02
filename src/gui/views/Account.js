@@ -13,7 +13,7 @@ import IssueCertificate from "./IssueCertificate";
 
 const drawerWidth = 240;
 
-export default function Account({address, certificates, awaitingCertificates}) {
+export default function Account({address, certificates, awaitingCertificates, dispatch}) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -68,7 +68,7 @@ export default function Account({address, certificates, awaitingCertificates}) {
             <Profile/>
           </Route>
           <Route path={`${path}/notifications`}>
-            <NotificationsPage address={address} awaitingCertificates={awaitingCertificates}/>
+            <NotificationsPage address={address} awaitingCertificates={awaitingCertificates} dispatch={dispatch}/>
           </Route>
           <Route path={`${path}/issueCertificate`}>
             <IssueCertificate address={address}/>

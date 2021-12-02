@@ -9,7 +9,7 @@ import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import {green} from '@mui/material/colors';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import {Alert, Avatar, Box, Grid, Paper, Snackbar, Tooltip} from "@mui/material";
+import {Alert, Avatar, Grid, Paper, Snackbar, Tooltip} from "@mui/material";
 import Divider from "@mui/material/Divider";
 import CheckIcon from '@mui/icons-material/Check';
 import {camelcaseToWords} from "../utils/StringFunctions"
@@ -21,8 +21,9 @@ import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import {SizedAvatar} from "../utils/StyledComponents";
-import {ipfs,CertificatesContext} from "../App";
+import {ipfs,CertificatesContext, ACTIONS} from "../App";
 import {encryptSYM} from "../utils/CryptoFunctions";
+import {userPrivateKey as userPK} from "../assets/DummyData";
 
 const ExpandMore = styled((props) => {
   const {expand, ...other} = props;
@@ -35,20 +36,16 @@ const ExpandMore = styled((props) => {
   }),
 }));
 
-export default function Certificate({address, data, isCertificateAccepted = true}) {
+export default function Certificate({id, address, data, dispatch= undefined, isCertificateAccepted = true}) {
   const [expanded, setExpanded] = useState(false)
   const [openDialog, setOpenDialog] = useState(false)
   const [snackbarOpen, setSnackbarOpen] = useState(false)
   const {certificateStorage} = useContext(CertificatesContext)
 
   async function acceptCertificate() {
-    console.log(data)
-
-    Object.entries(data.decryptedCertificate.state).map(el => console.log(el))
-
     const {decryptedCertificate, signature, nonce, id} = data
     //todo
-    const userPrivateKey = "yhksXY5rKT9k+RumMtqQJ2sdCAfFin1VzmAnqc9eOU8zC7vzAt/i8gvo+JouRAM2jp04jMzf/CmWl3eQ3ZcRZg=="
+    const userPrivateKey = userPK
 
     // User encrypts certificate
     const encryptedData = encryptSYM({decryptedCertificate, signature, nonce}, userPrivateKey)
@@ -60,6 +57,7 @@ export default function Certificate({address, data, isCertificateAccepted = true
       .send({from: address})
       .on('transactionHash', () => {
         setSnackbarOpen(true)
+        dispatch({type:ACTIONS.CERTIFICATE_ACCEPTED, payload: data})
       })
   }
 

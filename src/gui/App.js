@@ -19,6 +19,7 @@ import Typography from "@mui/material/Typography";
 import {Alert, Paper, Snackbar, Tooltip} from "@mui/material";
 import {LoadingButton} from "@mui/lab";
 import {useCookies} from 'react-cookie';
+import {userPrivateKey as userPK} from "./assets/DummyData";
 
 // Declare IPFS
 export const ipfs = create({host: 'ipfs.infura.io', port: 5001, protocol: 'https'}) // leaving out the arguments will default to these values
@@ -28,7 +29,7 @@ export const CertificatesContext = createContext({})
 
 const COOKIE_NAME = "userPrivateKey"
 
-const ACTIONS = {
+export const ACTIONS = {
   NEW_USER: "new_user",
   SET_ADDRESS: "set_address",
   SET_PUBLIC_KEY: "set_public_key",
@@ -38,7 +39,8 @@ const ACTIONS = {
   SET_BLOCKCHAIN_CERTIFICATES: "set_blockchain_certificates",
   SET_AWAITING_CERTIFICATES: "set_awaiting_certificates",
   SET_CERTIFICATES: "set_certificates",
-  ACCOUNT_DISCONNECTED: "account_disconnected"
+  ACCOUNT_DISCONNECTED: "account_disconnected",
+  CERTIFICATE_ACCEPTED: "certificate_accepted"
 }
 
 function reducer(state, action) {
@@ -104,6 +106,12 @@ function reducer(state, action) {
         isNewUser: false,
         loading: false,
         snackbarOpen: false,
+      }
+    case ACTIONS.CERTIFICATE_ACCEPTED:
+      return {
+        ...state,
+        certificates: [...state.certificates, action.payload],
+        awaitingCertificates: state.awaitingCertificates.filter(el => el !== action.payload)
       }
     default:
       return state
@@ -203,11 +211,10 @@ function App() {
       const certificatesStorage = new web3.eth.Contract(CertificatesStorage.abi, dataCS.address)
       setCertificateStorage(certificatesStorage)
 
-      const userCertificatesIDs = await certificatesStorage.methods.getUserCertificatesIDs(accounts[0]).call()
+      const userCertificates = await certificatesStorage.methods.getCertificates().call({from: accounts[0]})
 
       // Load certificates
-      for (const id of Object.values(userCertificatesIDs)) {
-        const certificate = await certificatesStorage.methods.certificates(id).call()
+      for (const certificate of userCertificates) {
         dispatch({type: ACTIONS.SET_BLOCKCHAIN_CERTIFICATES, payload: certificate})
 
         // Getting issuer public key
@@ -221,16 +228,16 @@ function App() {
             .then(response => {
               const encryptedCertificate = response.data
               //todo
-              const userPrivateKey = "yhksXY5rKT9k+RumMtqQJ2sdCAfFin1VzmAnqc9eOU8zC7vzAt/i8gvo+JouRAM2jp04jMzf/CmWl3eQ3ZcRZg=="
+              const userPrivateKey = userPK
 
               const {decryptedCertificate, signature, nonce} = decryptSYM(encryptedCertificate, userPrivateKey)
-              const isCertificateVerify = verifySignature({decryptedCertificate, nonce}, signature, issuerPublicKey)
+              const isCertificateVerify = verifySignature(decryptedCertificate, signature, issuerPublicKey)
 
               // check if signature is correct
               if (!isCertificateVerify) return
 
               // Add only certificates with correct signature
-              dispatch({type: ACTIONS.SET_CERTIFICATES, payload: {id, decryptedCertificate, signature, nonce}})
+              dispatch({type: ACTIONS.SET_CERTIFICATES, payload: {id: certificate.id, decryptedCertificate, signature, nonce}})
             })
 
         }else {
@@ -248,7 +255,7 @@ function App() {
               if (!isCertificateVerify) return
 
               // Add only certificates with correct signature
-              dispatch({type: ACTIONS.SET_AWAITING_CERTIFICATES, payload: {id, decryptedCertificate, signature, nonce: encryptedCertificate.nonce}})
+              dispatch({type: ACTIONS.SET_AWAITING_CERTIFICATES, payload: {id: certificate.id, decryptedCertificate, signature, nonce: encryptedCertificate.nonce}})
             })
         }
       }
@@ -349,7 +356,9 @@ function App() {
             <Account
               address={state.address}
               certificates={state.certificates}
-              awaitingCertificates={state.awaitingCertificates}/>
+              awaitingCertificates={state.awaitingCertificates}
+              dispatch={dispatch}
+            />
           </CertificatesContext.Provider>
         </Route>
         <Route exact path="*">

@@ -3,14 +3,15 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Certificate from "../components/Certificate";
 
-export default function NotificationsPage({address, awaitingCertificates}) {
+export default function NotificationsPage({address, awaitingCertificates, dispatch}) {
   return (
     <Box>
       <Typography variant="h3">
         Notifications
       </Typography>
       <Box
-        sx={{display: "flex",
+        sx={{
+          display: "flex",
           flexDirection: "column",
           alignItems: "center",
           rowGap: "4em",
@@ -19,7 +20,15 @@ export default function NotificationsPage({address, awaitingCertificates}) {
         }}
       >
         {
-          awaitingCertificates.map((data,idx) => <Certificate address={address} data={data} isCertificateAccepted={false} key={idx}/>)
+          awaitingCertificates.map((data, idx) =>
+            <Certificate
+              id={idx}
+              address={address}
+              data={data}
+              dispatch={dispatch}
+              isCertificateAccepted={false}
+              key={idx}/>
+          )
         }
       </Box>
     </Box>

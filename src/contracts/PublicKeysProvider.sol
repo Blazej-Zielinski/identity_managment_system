@@ -6,6 +6,7 @@ contract PublicKeysProvider {
 
     // certificates sign by this address are authentic
     address public certificatesAuthority;
+    // todo maybe add certificatesAuthority name
 
     // public keys
     mapping(address => string) public publicKeys;

@@ -5,19 +5,22 @@ import {ipfs} from "../App";
 import {CertificatesContext} from "../App";
 import {createSignature, encryptASYN} from "../utils/CryptoFunctions";
 import {camelcaseToWords} from "../utils/StringFunctions";
+import {authorityPrivateKey} from "../assets/DummyData";
+
+const defaultState = (fields) => {
+  const initialValue = {};
+  return fields.reduce((obj, item) => {
+    return {
+      ...obj,
+      [item]: "",
+    };
+  }, initialValue);
+}
 
 export default function CertificateForm({address, type, fields}) {
-  const [state, setState] = useState(() => {
-    const initialValue = {};
-   return fields.reduce((obj, item) => {
-      return {
-        ...obj,
-        [item]: "",
-      };
-    }, initialValue);
-  })
+  const [state, setState] = useState(defaultState(fields))
   const [receiverAddress, setReceiverAddress] = useState("0xA40CfeAb2Fd477f0da91dF4481AC5B6944C6BF91")
-  const [senderPrivateKey, setSenderPrivateKey] = useState("6zRP0nBASVjhudLqyk/F7UXqUjaxKNB3TDgfnqJiw0yXqm8FL0bMd/xklJcuHi7CMV9/wTTHiH0TYpVbgxxWWg==")
+  const [senderPrivateKey, setSenderPrivateKey] = useState(authorityPrivateKey)
   const [snackbarOpen, setSnackbarOpen] = useState(false)
   const {certificateStorage, keysProvider} = useContext(CertificatesContext)
 
@@ -33,7 +36,7 @@ export default function CertificateForm({address, type, fields}) {
     // Getting receiver public key
     const receiverPublicKey = await keysProvider.methods.publicKeys(receiverAddress).call()
 
-    const certificate = {type , state}
+    const certificate = {type, state}
 
     // Encrypt certificate todo change getting sender private key
     const encryptedCertificate = encryptASYN(certificate, receiverPublicKey, senderPrivateKey)
@@ -48,6 +51,9 @@ export default function CertificateForm({address, type, fields}) {
       .send({from: address})
       .on('transactionHash', () => {
         setSnackbarOpen(true)
+        setReceiverAddress("")
+        setSenderPrivateKey("")
+        setState(defaultState(fields))
       })
   }
 
