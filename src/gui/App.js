@@ -13,21 +13,19 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
-import {createsKeyPair, decryptASYN, verifySignature, decryptSYM} from "./utils/CryptoFunctions";
+import {createsKeyPair, decryptASYN, verifySignature, decryptSYM, validatePrivateKey} from "./utils/CryptoFunctions";
 import {nextWeek} from "./utils/DateFunctions";
 import Typography from "@mui/material/Typography";
-import {Alert, Paper, Snackbar, Tooltip} from "@mui/material";
+import {Alert, FormHelperText, Paper, Snackbar, TextField, Tooltip} from "@mui/material";
 import {LoadingButton} from "@mui/lab";
 import {useCookies} from 'react-cookie';
-import {userPrivateKey as userPK} from "./assets/DummyData";
+import {COOKIE_NAME} from "./assets/CookieName";
 
 // Declare IPFS
 export const ipfs = create({host: 'ipfs.infura.io', port: 5001, protocol: 'https'}) // leaving out the arguments will default to these values
 
 // Context for storing certificates
 export const CertificatesContext = createContext({})
-
-const COOKIE_NAME = "userPrivateKey"
 
 export const ACTIONS = {
   NEW_USER: "new_user",
@@ -40,7 +38,10 @@ export const ACTIONS = {
   SET_AWAITING_CERTIFICATES: "set_awaiting_certificates",
   SET_CERTIFICATES: "set_certificates",
   ACCOUNT_DISCONNECTED: "account_disconnected",
-  CERTIFICATE_ACCEPTED: "certificate_accepted"
+  CERTIFICATE_ACCEPTED: "certificate_accepted",
+  USER_INSERT_SECRET_KEY: "user_insert_secret_key",
+  USER_INSERT_INVALID_SECRET_KEY: "user_insert_invalid_secret_key",
+  SECRET_KEY_COOKIE_NOT_SET: "secret_key_cookie_not_set",
 }
 
 function reducer(state, action) {
@@ -106,12 +107,31 @@ function reducer(state, action) {
         isNewUser: false,
         loading: false,
         snackbarOpen: false,
+        isPrivateKeyCookieSet: true,
+        isPrivateKeyValid: true
       }
     case ACTIONS.CERTIFICATE_ACCEPTED:
       return {
         ...state,
         certificates: [...state.certificates, action.payload],
         awaitingCertificates: state.awaitingCertificates.filter(el => el !== action.payload)
+      }
+    case ACTIONS.USER_INSERT_SECRET_KEY:
+      return {
+        ...state,
+        isPrivateKeyCookieSet: true,
+        isPrivateKeyValid: true,
+        snackbarOpen: true
+      }
+    case ACTIONS.USER_INSERT_INVALID_SECRET_KEY:
+      return {
+        ...state,
+        isPrivateKeyValid: false
+      }
+    case ACTIONS.SECRET_KEY_COOKIE_NOT_SET:
+      return {
+        ...state,
+        isPrivateKeyCookieSet: false
       }
     default:
       return state
@@ -131,7 +151,10 @@ function App() {
     isNewUser: false,
     loading: false,
     snackbarOpen: false,
+    isPrivateKeyCookieSet: true,
+    isPrivateKeyValid: true,
   })
+  const [privateKeyField, setPrivateKeyField] = useState("")
 
   //Certificates
   const [certificateStorage, setCertificateStorage] = useState({})
@@ -185,19 +208,20 @@ function App() {
     const web3 = window.web3
 
     const accounts = await web3.eth.getAccounts()
-    dispatch({type: ACTIONS.SET_ADDRESS, payload: accounts[0]})
+    const userAddress = accounts[0]
+    dispatch({type: ACTIONS.SET_ADDRESS, payload: userAddress})
 
     // Getting the contract
     const networkId = await web3.eth.net.getId()
-    const dataCS = CertificatesStorage.networks[networkId]
     const dataKP = KeysProvider.networks[networkId]
+    const dataCS = CertificatesStorage.networks[networkId]
 
-    if (dataCS && dataKP) {
+    if (dataKP && dataCS) {
       // getting keysProvider certificate
       const keysProvider = new web3.eth.Contract(KeysProvider.abi, dataKP.address)
       setKeysProvider(keysProvider)
 
-      const userPublicKey = await keysProvider.methods.publicKeys(accounts[0]).call()
+      const userPublicKey = await keysProvider.methods.publicKeys(userAddress).call()
 
       if (userPublicKey === "") {
         // new user
@@ -205,58 +229,14 @@ function App() {
         dispatch({type: ACTIONS.NEW_USER, payload: keys})
       } else {
         dispatch({type: ACTIONS.SET_PUBLIC_KEY, payload: userPublicKey})
-      }
 
-      // getting certificatesStorage certificate
-      const certificatesStorage = new web3.eth.Contract(CertificatesStorage.abi, dataCS.address)
-      setCertificateStorage(certificatesStorage)
-
-      const userCertificates = await certificatesStorage.methods.getCertificates().call({from: accounts[0]})
-
-      // Load certificates
-      for (const certificate of userCertificates) {
-        dispatch({type: ACTIONS.SET_BLOCKCHAIN_CERTIFICATES, payload: certificate})
-
-        // Getting issuer public key
-        const issuerPublicKey = await keysProvider.methods.publicKeys(certificate.issuer).call()
-
-        if(certificate.isAccepted) {
-          // certificates encrypted by user
-
-          // Getting encrypted certificate from ipfs
-          axios.get(`https://ipfs.infura.io/ipfs/${certificate.ipfsHash}`)
-            .then(response => {
-              const encryptedCertificate = response.data
-              //todo
-              const userPrivateKey = userPK
-
-              const {decryptedCertificate, signature, nonce} = decryptSYM(encryptedCertificate, userPrivateKey)
-              const isCertificateVerify = verifySignature(decryptedCertificate, signature, issuerPublicKey)
-
-              // check if signature is correct
-              if (!isCertificateVerify) return
-
-              // Add only certificates with correct signature
-              dispatch({type: ACTIONS.SET_CERTIFICATES, payload: {id: certificate.id, decryptedCertificate, signature, nonce}})
-            })
-
-        }else {
-          // new certificates, encrypted by certificates authority
-
-          // Getting encrypted certificate from ipfs
-          axios.get(`https://ipfs.infura.io/ipfs/${certificate.ipfsHash}`)
-            .then(response => {
-              const {encryptedCertificate, signature} = response.data
-
-              const decryptedCertificate = decryptASYN(encryptedCertificate, issuerPublicKey, cookie.userPrivateKey)
-              const isCertificateVerify = verifySignature(decryptedCertificate, signature, issuerPublicKey)
-
-              // check if signature is correct
-              if (!isCertificateVerify) return
-
-              // Add only certificates with correct signature
-              dispatch({type: ACTIONS.SET_AWAITING_CERTIFICATES, payload: {id: certificate.id, decryptedCertificate, signature, nonce: encryptedCertificate.nonce}})
-            })
+        // check if privateKey cookie is set and if private key match public key
+        if (!cookie[COOKIE_NAME] || !validatePrivateKey(cookie[COOKIE_NAME], userPublicKey)) {
+          dispatch({type: ACTIONS.SECRET_KEY_COOKIE_NOT_SET})
+        }
+        // if it set properly load certificates
+        else {
+          await loadCertificates(cookie[COOKIE_NAME])
         }
       }
     } else {
@@ -264,15 +244,102 @@ function App() {
     }
   }
 
-  function savePublicKey() {
+  async function loadCertificates(userPrivateKey) {
+    const web3 = window.web3
+
+    const accounts = await web3.eth.getAccounts()
+    const userAddress = accounts[0]
+
+    // Getting the contract
+    const networkId = await web3.eth.net.getId()
+    const dataKP = KeysProvider.networks[networkId]
+    const dataCS = CertificatesStorage.networks[networkId]
+
+    // getting keysProvider certificate
+    const keysProvider = new web3.eth.Contract(KeysProvider.abi, dataKP.address)
+
+    // getting certificatesStorage certificate
+    const certificatesStorage = new web3.eth.Contract(CertificatesStorage.abi, dataCS.address)
+    setCertificateStorage(certificatesStorage)
+
+    const userCertificates = await certificatesStorage.methods.getCertificates().call({from: userAddress})
+
+    // Load certificates
+    for (const certificate of userCertificates) {
+      dispatch({type: ACTIONS.SET_BLOCKCHAIN_CERTIFICATES, payload: certificate})
+
+      // Getting issuer public key
+      const issuerPublicKey = await keysProvider.methods.publicKeys(certificate.issuer).call()
+
+      if (certificate.isAccepted) {
+        // certificates encrypted by user
+
+        // Getting encrypted certificate from ipfs
+        axios.get(`https://ipfs.infura.io/ipfs/${certificate.ipfsHash}`)
+          .then(response => {
+            const encryptedCertificate = response.data
+
+            const {decryptedCertificate, signature, nonce} = decryptSYM(encryptedCertificate, userPrivateKey)
+            const isCertificateVerify = verifySignature(decryptedCertificate, signature, issuerPublicKey)
+
+            // check if signature is correct
+            if (!isCertificateVerify) return
+
+            // Add only certificates with correct signature
+            dispatch({
+              type: ACTIONS.SET_CERTIFICATES,
+              payload: {id: certificate.id, decryptedCertificate, signature, nonce}
+            })
+          })
+
+      } else {
+        // new certificates, encrypted by certificates authority
+
+        // Getting encrypted certificate from ipfs
+        axios.get(`https://ipfs.infura.io/ipfs/${certificate.ipfsHash}`)
+          .then(response => {
+            const {encryptedCertificate, signature} = response.data
+
+            const decryptedCertificate = decryptASYN(encryptedCertificate, issuerPublicKey, userPrivateKey)
+            const isCertificateVerify = verifySignature(decryptedCertificate, signature, issuerPublicKey)
+
+            // check if signature is correct
+            if (!isCertificateVerify) return
+
+            // Add only certificates with correct signature
+            dispatch({
+              type: ACTIONS.SET_AWAITING_CERTIFICATES,
+              payload: {id: certificate.id, decryptedCertificate, signature, nonce: encryptedCertificate.nonce}
+            })
+          })
+      }
+    }
+  }
+
+  async function savePublicKey() {
     // save private key to blockchain
     dispatch({type: ACTIONS.LOADING})
 
     keysProvider.methods.addKey(state.generatedKeys.publicKey).send({from: state.address})
-      .on('transactionHash', () => {
-      setCookie(COOKIE_NAME, state.generatedKeys.secretKey, {path: '/', expires: nextWeek()});
-      dispatch({type: ACTIONS.PUBLIC_KEY_SAVED, payload: state.generatedKeys.publicKey})
-    })
+      .on('transactionHash', async () => {
+        setCookie(COOKIE_NAME, state.generatedKeys.secretKey, {path: '/', expires: nextWeek()});
+        dispatch({type: ACTIONS.PUBLIC_KEY_SAVED, payload: state.generatedKeys.publicKey})
+        await loadCertificates(state.generatedKeys.secretKey)
+      })
+  }
+
+  async function savePrivateKey() {
+    // validate private key
+    const isPrivateKeyValid = validatePrivateKey(privateKeyField, state.publicKey)
+
+    if (isPrivateKeyValid) {
+      setCookie(COOKIE_NAME, privateKeyField, {path: '/', expires: nextWeek()});
+      dispatch({type: ACTIONS.USER_INSERT_SECRET_KEY})
+      await loadCertificates(privateKeyField)
+      setPrivateKeyField("")
+    } else {
+      dispatch({type: ACTIONS.USER_INSERT_INVALID_SECRET_KEY})
+    }
   }
 
   return (
@@ -284,7 +351,7 @@ function App() {
             connectToWallet={connectToWallet}
           />
 
-          {/*Dialog window*/}
+          {/*Dialog window for generating keys*/}
           <Dialog open={state.isNewUser} maxWidth="md">
             <DialogTitle>Copy your private key</DialogTitle>
             <DialogContent>
@@ -332,6 +399,39 @@ function App() {
                 variant="contained">
                 Close the window
               </LoadingButton>
+            </DialogActions>
+          </Dialog>
+
+          {/*Dialog window for inserting private key*/}
+          <Dialog open={!state.isPrivateKeyCookieSet} maxWidth="md">
+            <DialogTitle>Insert your private key</DialogTitle>
+            <DialogContent>
+              <Typography variant="subtitle2" sx={{mb: 3}}>
+                We cannot find your secret key. You see this message probably because cookies have expired or you are
+                trying to use this app from another device. You need to pass your private key in order to access your
+                account. Insert key into field bellow and save key.
+              </Typography>
+              <TextField
+                error={!state.isPrivateKeyValid}
+                value={privateKeyField}
+                name="userPrivateKey"
+                onChange={evt => setPrivateKeyField(evt.target.value)}
+                label="Secret key"
+                sx={{width: "100%"}}
+              >
+              </TextField>
+              <FormHelperText
+                error={!state.isPrivateKeyValid}
+                sx={state.isPrivateKeyValid && {visibility: "hidden"}}>
+                Private key is invalid
+              </FormHelperText>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={savePrivateKey}
+                variant="contained">
+                Save key
+              </Button>
             </DialogActions>
           </Dialog>
 

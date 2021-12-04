@@ -5,7 +5,8 @@ import {ipfs} from "../App";
 import {CertificatesContext} from "../App";
 import {createSignature, encryptASYN} from "../utils/CryptoFunctions";
 import {camelcaseToWords} from "../utils/StringFunctions";
-import {authorityPrivateKey} from "../assets/DummyData";
+import {useCookies} from "react-cookie";
+import {COOKIE_NAME} from "../assets/CookieName";
 
 const defaultState = (fields) => {
   const initialValue = {};
@@ -20,9 +21,9 @@ const defaultState = (fields) => {
 export default function CertificateForm({address, type, fields}) {
   const [state, setState] = useState(defaultState(fields))
   const [receiverAddress, setReceiverAddress] = useState("0xA40CfeAb2Fd477f0da91dF4481AC5B6944C6BF91")
-  const [senderPrivateKey, setSenderPrivateKey] = useState(authorityPrivateKey)
   const [snackbarOpen, setSnackbarOpen] = useState(false)
   const {certificateStorage, keysProvider} = useContext(CertificatesContext)
+  const [cookie] = useCookies([COOKIE_NAME]);
 
   function handleChange(evt) {
     const value = evt.target.value;
@@ -35,14 +36,15 @@ export default function CertificateForm({address, type, fields}) {
   async function sendCertificate() {
     // Getting receiver public key
     const receiverPublicKey = await keysProvider.methods.publicKeys(receiverAddress).call()
+    const authorityPrivateKey = cookie[COOKIE_NAME]
 
     const certificate = {type, state}
 
     // Encrypt certificate todo change getting sender private key
-    const encryptedCertificate = encryptASYN(certificate, receiverPublicKey, senderPrivateKey)
+    const encryptedCertificate = encryptASYN(certificate, receiverPublicKey, authorityPrivateKey)
 
     // Create sender signature
-    const signature = createSignature(certificate, senderPrivateKey)
+    const signature = createSignature(certificate, authorityPrivateKey)
 
     // Adding certificate to ipfs
     const cid = await ipfs.add(JSON.stringify({encryptedCertificate, signature}))
@@ -52,7 +54,6 @@ export default function CertificateForm({address, type, fields}) {
       .on('transactionHash', () => {
         setSnackbarOpen(true)
         setReceiverAddress("")
-        setSenderPrivateKey("")
         setState(defaultState(fields))
       })
   }
@@ -69,7 +70,6 @@ export default function CertificateForm({address, type, fields}) {
                 name={el}
                 label={camelcaseToWords(el)}
                 onChange={handleChange}
-                id="outlined-required"
                 sx={{width: "100%"}}
               />
             </Grid>)
@@ -80,19 +80,7 @@ export default function CertificateForm({address, type, fields}) {
             value={receiverAddress}
             name="receiverAddress"
             onChange={evt => setReceiverAddress(evt.target.value)}
-            id="outlined-required"
             label="Receiver address"
-            sx={{width: "100%"}}
-          />
-        </Grid>
-        <Grid item xs={6}>
-          <TextField
-            required
-            value={senderPrivateKey}
-            name="senderPrivateKey"
-            onChange={evt => setSenderPrivateKey(evt.target.value)}
-            id="outlined-required"
-            label="Sender Private Key"
             sx={{width: "100%"}}
           />
         </Grid>

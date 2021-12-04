@@ -11,7 +11,8 @@ export default function Certificates({address, certificates}) {
       </Typography>
 
       <Box
-        sx={{display: "flex",
+        sx={{
+          display: "flex",
           flexDirection: "column",
           alignItems: "center",
           rowGap: "4em",
@@ -20,7 +21,12 @@ export default function Certificates({address, certificates}) {
         }}
       >
         {
-          certificates.map((data,idx) => <Certificate address={address} data={data} key={idx}/>)
+          certificates.length === 0 ?
+            <Typography variant={"h3"}>
+              No certificates
+            </Typography>
+            :
+            certificates.map((data, idx) => <Certificate address={address} data={data} key={idx}/>)
         }
       </Box>
     </Box>

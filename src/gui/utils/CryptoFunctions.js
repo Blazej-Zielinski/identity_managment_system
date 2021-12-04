@@ -6,6 +6,13 @@ export function createsKeyPair() {
   return AsyCrypto.keyPair()
 }
 
+export function validatePrivateKey(secretKey, publicKey) {
+  if(secretKey.length !== 88) return false
+
+  const newKeyPair = AsyCrypto.fromSecretKey(secretKey)
+  return newKeyPair.publicKey === publicKey
+}
+
 export function encryptASYN(data, receiverPublicKey, senderPrivateKey) {
   return AsyCrypto.encrypt(JSON.stringify(data), receiverPublicKey, senderPrivateKey)
 }

@@ -20,15 +20,20 @@ export default function NotificationsPage({address, awaitingCertificates, dispat
         }}
       >
         {
-          awaitingCertificates.map((data, idx) =>
-            <Certificate
-              id={idx}
-              address={address}
-              data={data}
-              dispatch={dispatch}
-              isCertificateAccepted={false}
-              key={idx}/>
-          )
+          awaitingCertificates.length === 0 ?
+            <Typography variant={"h3"}>
+              No awaiting certificates
+            </Typography>
+            :
+            awaitingCertificates.map((data, idx) =>
+              <Certificate
+                id={idx}
+                address={address}
+                data={data}
+                dispatch={dispatch}
+                isCertificateAccepted={false}
+                key={idx}/>
+            )
         }
       </Box>
     </Box>

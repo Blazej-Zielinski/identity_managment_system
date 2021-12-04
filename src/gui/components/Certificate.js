@@ -23,7 +23,8 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import {SizedAvatar} from "../utils/StyledComponents";
 import {ipfs,CertificatesContext, ACTIONS} from "../App";
 import {encryptSYM} from "../utils/CryptoFunctions";
-import {userPrivateKey as userPK} from "../assets/DummyData";
+import {useCookies} from "react-cookie";
+import {COOKIE_NAME} from "../assets/CookieName";
 
 const ExpandMore = styled((props) => {
   const {expand, ...other} = props;
@@ -41,11 +42,11 @@ export default function Certificate({id, address, data, dispatch= undefined, isC
   const [openDialog, setOpenDialog] = useState(false)
   const [snackbarOpen, setSnackbarOpen] = useState(false)
   const {certificateStorage} = useContext(CertificatesContext)
+  const [cookie] = useCookies([COOKIE_NAME]);
 
   async function acceptCertificate() {
     const {decryptedCertificate, signature, nonce, id} = data
-    //todo
-    const userPrivateKey = userPK
+    const userPrivateKey = cookie[COOKIE_NAME]
 
     // User encrypts certificate
     const encryptedData = encryptSYM({decryptedCertificate, signature, nonce}, userPrivateKey)
