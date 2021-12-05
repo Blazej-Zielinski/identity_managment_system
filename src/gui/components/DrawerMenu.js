@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from "react";
+import React, {useEffect, useState} from "react";
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
@@ -8,14 +8,11 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 import {makeStyles} from "@mui/styles";
-import PersonIcon from '@mui/icons-material/Person';
 import LogoutIcon from '@mui/icons-material/Logout';
-import ClassIcon from '@mui/icons-material/Class';
-import NotificationsIcon from '@mui/icons-material/Notifications';
-import InfoIcon from '@mui/icons-material/Info';
-import {useHistory, useRouteMatch, useLocation} from 'react-router-dom'
+import {useHistory, useLocation, useRouteMatch} from 'react-router-dom'
 import CardMedia from "@mui/material/CardMedia";
 import Badge from '@mui/material/Badge';
+import {userDrawerElements, authorityDrawerElements, userDrawerLinks, authorityDrawerLinks} from "../assets/DrawerElements";
 
 const useStyles = makeStyles({
   flexColumn: {
@@ -30,43 +27,26 @@ const useStyles = makeStyles({
   }
 });
 
-const drawerElements = [
-  {
-    title: "Profile",
-    icon: <PersonIcon/>,
-    endpoint: "profile"
-  },
-  {
-    title: "Certificates",
-    icon: <ClassIcon/>,
-    endpoint: "certificates"
-  },
-  {
-    title: "Notifications",
-    icon: <NotificationsIcon/>,
-    endpoint: "notifications"
-  },
-  {
-    title: "Issue Certificate",
-    icon: <InfoIcon/>,
-    endpoint: "issueCertificate"
-  },
-]
-
-export default function DrawerMenu({window, address, drawerWidth, mobileOpen, handleDrawerToggle, notifications}) {
+export default function DrawerMenu({window, authorityAccount, address, drawerWidth, mobileOpen, handleDrawerToggle, notifications}) {
   const [selectedItem, setSelectedItem] = useState(0);
   const classes = useStyles()
   const history = useHistory()
   const {path} = useRouteMatch();
   const location = useLocation();
+  const drawerElements = authorityAccount ? authorityDrawerElements : userDrawerElements
 
   useEffect(() => {
-    ["/profile", "/certificates", "/notifications", "/issueCertificate"].forEach((el, idx) => {
+    const paths = authorityAccount ?
+      authorityDrawerLinks
+      :
+      userDrawerLinks
+
+    paths.forEach((el, idx) => {
       if (path + el === location.pathname) {
         setSelectedItem(idx + 1)
       }
     })
-  }, [location, path])
+  }, [authorityAccount, location, path])
 
   function handleListItemClick(endpoint, idx) {
     if (mobileOpen) {
@@ -102,7 +82,7 @@ export default function DrawerMenu({window, address, drawerWidth, mobileOpen, ha
             selected={selectedItem === idx + 1}>
             <ListItemIcon>
               {
-                idx === 2 && notifications ?
+                title === "Notifications" && notifications ?
                   <Badge badgeContent={notifications} color="primary">{icon}</Badge>
                   :
                   icon
@@ -114,7 +94,10 @@ export default function DrawerMenu({window, address, drawerWidth, mobileOpen, ha
       </List>
       <Divider/>
       <List>
-        <ListItem button key={"Log out"}>
+        <ListItem
+          button
+          onClick={() => history.push("/")}
+          key={"Log out"}>
           <ListItemIcon>
             <LogoutIcon/>
           </ListItemIcon>

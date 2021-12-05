@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useReducer, createContext} from "react";
+import React, {createContext, useEffect, useReducer} from "react";
 import {Route, Switch, useHistory} from 'react-router-dom';
 import Web3 from "web3";
 import CertificatesStorage from '../build/CertificatesStorage.json'
@@ -13,13 +13,15 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
-import {createsKeyPair, decryptASYN, verifySignature, decryptSYM, validatePrivateKey} from "./utils/CryptoFunctions";
+import {createsKeyPair, decryptASYN, decryptSYM, validatePrivateKey, verifySignature} from "./utils/CryptoFunctions";
 import {nextWeek} from "./utils/DateFunctions";
 import Typography from "@mui/material/Typography";
-import {Alert, FormHelperText, Paper, Snackbar, TextField, Tooltip} from "@mui/material";
+import {Alert, CircularProgress, FormHelperText, Paper, Snackbar, TextField, Tooltip} from "@mui/material";
 import {LoadingButton} from "@mui/lab";
 import {useCookies} from 'react-cookie';
 import {COOKIE_NAME} from "./assets/CookieName";
+import {ACTIONS, reducer} from "./assets/AppReducer";
+import LoadingPage from "./views/LoadingPage";
 
 // Declare IPFS
 export const ipfs = create({host: 'ipfs.infura.io', port: 5001, protocol: 'https'}) // leaving out the arguments will default to these values
@@ -27,121 +29,13 @@ export const ipfs = create({host: 'ipfs.infura.io', port: 5001, protocol: 'https
 // Context for storing certificates
 export const CertificatesContext = createContext({})
 
-export const ACTIONS = {
-  NEW_USER: "new_user",
-  SET_ADDRESS: "set_address",
-  SET_PUBLIC_KEY: "set_public_key",
-  PUBLIC_KEY_SAVED: "public_key_saved",
-  CLOSE_SNACKBAR: "close_snackbar",
-  LOADING: "loading",
-  SET_BLOCKCHAIN_CERTIFICATES: "set_blockchain_certificates",
-  SET_AWAITING_CERTIFICATES: "set_awaiting_certificates",
-  SET_CERTIFICATES: "set_certificates",
-  ACCOUNT_DISCONNECTED: "account_disconnected",
-  CERTIFICATE_ACCEPTED: "certificate_accepted",
-  USER_INSERT_SECRET_KEY: "user_insert_secret_key",
-  USER_INSERT_INVALID_SECRET_KEY: "user_insert_invalid_secret_key",
-  SECRET_KEY_COOKIE_NOT_SET: "secret_key_cookie_not_set",
-}
-
-function reducer(state, action) {
-  switch (action.type) {
-    case ACTIONS.NEW_USER:
-      return {
-        ...state,
-        generatedKeys: action.payload,
-        isNewUser: true
-      }
-    case ACTIONS.SET_PUBLIC_KEY:
-      return {
-        ...state,
-        publicKey: action.payload
-      }
-    case ACTIONS.CLOSE_SNACKBAR:
-      return {
-        ...state,
-        snackbarOpen: false
-      }
-    case ACTIONS.PUBLIC_KEY_SAVED:
-      return {
-        ...state,
-        loading: false,
-        generatedKeys: {},
-        isNewUser: false,
-        snackbarOpen: true,
-        publicKey: action.payload
-      }
-    case ACTIONS.LOADING:
-      return {
-        ...state,
-        loading: true
-      }
-    case ACTIONS.SET_ADDRESS:
-      return {
-        ...state,
-        address: action.payload
-      }
-    case ACTIONS.SET_BLOCKCHAIN_CERTIFICATES:
-      return {
-        ...state,
-        blockchainCertificates: [...state.blockchainCertificates, action.payload]
-      }
-    case ACTIONS.SET_AWAITING_CERTIFICATES:
-      return {
-        ...state,
-        awaitingCertificates: [...state.awaitingCertificates, action.payload]
-      }
-    case ACTIONS.SET_CERTIFICATES:
-      return {
-        ...state,
-        certificates: [...state.certificates, action.payload]
-      }
-    case ACTIONS.ACCOUNT_DISCONNECTED:
-      return {
-        address: "",
-        publicKey: "",
-        blockchainCertificates: [],
-        awaitingCertificates: [],
-        certificates: [],
-        generatedKeys: {},
-        isNewUser: false,
-        loading: false,
-        snackbarOpen: false,
-        isPrivateKeyCookieSet: true,
-        isPrivateKeyValid: true
-      }
-    case ACTIONS.CERTIFICATE_ACCEPTED:
-      return {
-        ...state,
-        certificates: [...state.certificates, action.payload],
-        awaitingCertificates: state.awaitingCertificates.filter(el => el !== action.payload)
-      }
-    case ACTIONS.USER_INSERT_SECRET_KEY:
-      return {
-        ...state,
-        isPrivateKeyCookieSet: true,
-        isPrivateKeyValid: true,
-        snackbarOpen: true
-      }
-    case ACTIONS.USER_INSERT_INVALID_SECRET_KEY:
-      return {
-        ...state,
-        isPrivateKeyValid: false
-      }
-    case ACTIONS.SECRET_KEY_COOKIE_NOT_SET:
-      return {
-        ...state,
-        isPrivateKeyCookieSet: false
-      }
-    default:
-      return state
-  }
-}
-
 function App() {
   const history = useHistory()
   const [cookie, setCookie] = useCookies([COOKIE_NAME]);
   const [state, dispatch] = useReducer(reducer, {
+    certificateStorage: {}, // certificate object
+    keysProvider: {}, // certificate object
+    isCertificateAuthorityAccount: false,
     address: "",
     publicKey: "",
     blockchainCertificates: [], // blockchain certificates
@@ -149,16 +43,13 @@ function App() {
     certificates: [], // user certificates
     generatedKeys: {},
     isNewUser: false,
-    loading: false,
+    loadingButton: false,
     snackbarOpen: false,
     isPrivateKeyCookieSet: true,
     isPrivateKeyValid: true,
+    privateKeyField: "",
+    loadingBlockchainData: true
   })
-  const [privateKeyField, setPrivateKeyField] = useState("")
-
-  //Certificates
-  const [certificateStorage, setCertificateStorage] = useState({})
-  const [keysProvider, setKeysProvider] = useState({})
 
   useEffect(() => {
     async function checkIfWalletConnected() {
@@ -219,7 +110,7 @@ function App() {
     if (dataKP && dataCS) {
       // getting keysProvider certificate
       const keysProvider = new web3.eth.Contract(KeysProvider.abi, dataKP.address)
-      setKeysProvider(keysProvider)
+      dispatch({type: ACTIONS.SET_KEYS_PROVIDER_CERTIFICATE, payload: keysProvider})
 
       const userPublicKey = await keysProvider.methods.publicKeys(userAddress).call()
 
@@ -239,6 +130,8 @@ function App() {
           await loadCertificates(cookie[COOKIE_NAME])
         }
       }
+
+    dispatch({type: ACTIONS.BLOCKCHAIN_DATA_LOADED})
     } else {
       window.alert("CertificatesStore or KeysProvider contract not deployed to detected network")
     }
@@ -260,11 +153,19 @@ function App() {
 
     // getting certificatesStorage certificate
     const certificatesStorage = new web3.eth.Contract(CertificatesStorage.abi, dataCS.address)
-    setCertificateStorage(certificatesStorage)
+    dispatch({type: ACTIONS.SET_CERTIFICATES_STORAGE_CERTIFICATE, payload: certificatesStorage})
 
-    const userCertificates = await certificatesStorage.methods.getCertificates().call({from: userAddress})
+    // check if account is Certificate Authority
+    const certificatesAuthorityAddress = await keysProvider.methods.certificatesAuthority().call()
+    if (certificatesAuthorityAddress === userAddress) {
+      dispatch({type: ACTIONS.CERTIFICATES_AUTHORITY_LOGGED})
+
+      // no need to load certificates
+      return
+    }
 
     // Load certificates
+    const userCertificates = await certificatesStorage.methods.getCertificates().call({from: userAddress})
     for (const certificate of userCertificates) {
       dispatch({type: ACTIONS.SET_BLOCKCHAIN_CERTIFICATES, payload: certificate})
 
@@ -318,9 +219,9 @@ function App() {
 
   async function savePublicKey() {
     // save private key to blockchain
-    dispatch({type: ACTIONS.LOADING})
+    dispatch({type: ACTIONS.LOADING_BUTTON})
 
-    keysProvider.methods.addKey(state.generatedKeys.publicKey).send({from: state.address})
+    state.keysProvider.methods.addKey(state.generatedKeys.publicKey).send({from: state.address})
       .on('transactionHash', async () => {
         setCookie(COOKIE_NAME, state.generatedKeys.secretKey, {path: '/', expires: nextWeek()});
         dispatch({type: ACTIONS.PUBLIC_KEY_SAVED, payload: state.generatedKeys.publicKey})
@@ -330,13 +231,12 @@ function App() {
 
   async function savePrivateKey() {
     // validate private key
-    const isPrivateKeyValid = validatePrivateKey(privateKeyField, state.publicKey)
+    const isPrivateKeyValid = validatePrivateKey(state.privateKeyField, state.publicKey)
 
     if (isPrivateKeyValid) {
-      setCookie(COOKIE_NAME, privateKeyField, {path: '/', expires: nextWeek()});
+      setCookie(COOKIE_NAME, state.privateKeyField, {path: '/', expires: nextWeek()});
       dispatch({type: ACTIONS.USER_INSERT_SECRET_KEY})
-      await loadCertificates(privateKeyField)
-      setPrivateKeyField("")
+      await loadCertificates(state.privateKeyField)
     } else {
       dispatch({type: ACTIONS.USER_INSERT_INVALID_SECRET_KEY})
     }
@@ -347,6 +247,7 @@ function App() {
       <Switch>
         <Route exact path="/">
           <StartPage
+            authorityAccount={state.isCertificateAuthorityAccount}
             connected={state.address !== ''}
             connectToWallet={connectToWallet}
           />
@@ -395,7 +296,7 @@ function App() {
             <DialogActions>
               <LoadingButton
                 onClick={savePublicKey}
-                loading={state.loading}
+                loading={state.loadingButton}
                 variant="contained">
                 Close the window
               </LoadingButton>
@@ -413,9 +314,9 @@ function App() {
               </Typography>
               <TextField
                 error={!state.isPrivateKeyValid}
-                value={privateKeyField}
+                value={state.privateKeyField}
                 name="userPrivateKey"
-                onChange={evt => setPrivateKeyField(evt.target.value)}
+                onChange={evt => dispatch({type: ACTIONS.PRIVATE_KEY_FIELD_CHANGES, payload: evt.target.value})}
                 label="Secret key"
                 sx={{width: "100%"}}
               >
@@ -452,13 +353,23 @@ function App() {
 
         </Route>
         <Route path="/account">
-          <CertificatesContext.Provider value={{certificateStorage, keysProvider}}>
-            <Account
-              address={state.address}
-              certificates={state.certificates}
-              awaitingCertificates={state.awaitingCertificates}
-              dispatch={dispatch}
-            />
+          <CertificatesContext.Provider
+            value={{
+              certificateStorage: state.certificateStorage,
+              keysProvider: state.keysProvider
+            }}>
+            {
+              state.loadingBlockchainData ?
+                <LoadingPage/>
+                :
+                <Account
+                  authorityAccount={state.isCertificateAuthorityAccount}
+                  address={state.address}
+                  certificates={state.certificates}
+                  awaitingCertificates={state.awaitingCertificates}
+                  dispatch={dispatch}
+                />
+            }
           </CertificatesContext.Provider>
         </Route>
         <Route exact path="*">

@@ -6,9 +6,9 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { useHistory } from 'react-router-dom'
+import {useHistory} from 'react-router-dom'
 
-export default function Header({connected, connectToWallet}) {
+export default function Header({authorityAccount, connected, connectToWallet}) {
   const history = useHistory()
 
   return (
@@ -36,7 +36,10 @@ export default function Header({connected, connectToWallet}) {
               <Button
                 color="inherit"
                 variant="outlined"
-                onClick={() => history.push("/account/certificates")}
+                onClick={() => {
+                  const path = authorityAccount ? "/account/issueCertificate": "/account/certificates"
+                  history.push(path)
+                }}
               >Go to your profile</Button>
               :
               <Button

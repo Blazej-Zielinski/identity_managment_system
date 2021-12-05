@@ -8,7 +8,7 @@ import CertificateForm from "../components/CertificateForm";
 import {CERTIFICATE_TYPE} from "../utils/IconPicker";
 
 export default function IssueCertificate({address}) {
-  const [value, setValue] = useState('2');
+  const [value, setValue] = useState('1');
 
   return (
     <Box>

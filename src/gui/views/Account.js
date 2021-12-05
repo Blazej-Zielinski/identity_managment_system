@@ -7,13 +7,13 @@ import Toolbar from "@mui/material/Toolbar";
 import MenuIcon from "@mui/icons-material/Menu";
 import {Route, Switch, useRouteMatch} from "react-router-dom";
 import Certificates from "./Certificates";
-import Profile from "./Profile";
 import NotificationsPage from "./NotificationsPage";
 import IssueCertificate from "./IssueCertificate";
+import Error404 from "./Error404";
 
 const drawerWidth = 240;
 
-export default function Account({address, certificates, awaitingCertificates, dispatch}) {
+export default function Account({authorityAccount, address, certificates, awaitingCertificates, dispatch}) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -45,6 +45,7 @@ export default function Account({address, certificates, awaitingCertificates, di
 
       {/* Drawer */}
       <DrawerMenu
+        authorityAccount={authorityAccount}
         address={address}
         drawerWidth={drawerWidth}
         mobileOpen={mobileOpen}
@@ -64,14 +65,14 @@ export default function Account({address, certificates, awaitingCertificates, di
           <Route path={`${path}/certificates`}>
             <Certificates address={address} certificates={certificates}/>
           </Route>
-          <Route path={`${path}/profile`}>
-            <Profile/>
-          </Route>
           <Route path={`${path}/notifications`}>
             <NotificationsPage address={address} awaitingCertificates={awaitingCertificates} dispatch={dispatch}/>
           </Route>
           <Route path={`${path}/issueCertificate`}>
             <IssueCertificate address={address}/>
+          </Route>
+          <Route path={`${path}/*`}>
+            <Error404/>
           </Route>
         </Switch>
       </Box>

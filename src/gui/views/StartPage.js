@@ -18,12 +18,13 @@ const useStyles = makeStyles({
   },
 });
 
-export default function StartPage({connected, connectToWallet}) {
+export default function StartPage({authorityAccount, connected, connectToWallet}) {
   const classes = useStyles()
 
   return (
     <div>
       <Header
+        authorityAccount={authorityAccount}
         connected={connected}
         connectToWallet={connectToWallet}
       />

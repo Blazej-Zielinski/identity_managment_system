@@ -21,10 +21,11 @@ import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import {SizedAvatar} from "../utils/StyledComponents";
-import {ipfs,CertificatesContext, ACTIONS} from "../App";
+import {ipfs,CertificatesContext} from "../App";
 import {encryptSYM} from "../utils/CryptoFunctions";
 import {useCookies} from "react-cookie";
 import {COOKIE_NAME} from "../assets/CookieName";
+import {ACTIONS} from "../assets/AppReducer";
 
 const ExpandMore = styled((props) => {
   const {expand, ...other} = props;
