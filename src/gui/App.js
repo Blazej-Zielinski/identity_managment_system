@@ -16,7 +16,7 @@ import Button from "@mui/material/Button";
 import {createsKeyPair, decryptASYN, decryptSYM, validatePrivateKey, verifySignature} from "./utils/CryptoFunctions";
 import {nextWeek} from "./utils/DateFunctions";
 import Typography from "@mui/material/Typography";
-import {Alert, CircularProgress, FormHelperText, Paper, Snackbar, TextField, Tooltip} from "@mui/material";
+import {Alert, FormHelperText, Paper, Snackbar, TextField, Tooltip} from "@mui/material";
 import {LoadingButton} from "@mui/lab";
 import {useCookies} from 'react-cookie';
 import {COOKIE_NAME} from "./assets/CookieName";
@@ -172,6 +172,9 @@ function App() {
       // Getting issuer public key
       const issuerPublicKey = await keysProvider.methods.publicKeys(certificate.issuer).call()
 
+      // Getting issuer name ( Authority name )
+      const authorityName = await keysProvider.methods.authorityName().call()
+
       if (certificate.isAccepted) {
         // certificates encrypted by user
 
@@ -189,7 +192,7 @@ function App() {
             // Add only certificates with correct signature
             dispatch({
               type: ACTIONS.SET_CERTIFICATES,
-              payload: {id: certificate.id, decryptedCertificate, signature, nonce}
+              payload: {id: certificate.id, decryptedCertificate, signature, nonce, authorityName}
             })
           })
 
@@ -210,7 +213,7 @@ function App() {
             // Add only certificates with correct signature
             dispatch({
               type: ACTIONS.SET_AWAITING_CERTIFICATES,
-              payload: {id: certificate.id, decryptedCertificate, signature, nonce: encryptedCertificate.nonce}
+              payload: {id: certificate.id, decryptedCertificate, signature, nonce: encryptedCertificate.nonce, authorityName}
             })
           })
       }
@@ -285,6 +288,7 @@ function App() {
                   <Button
                     variant="text"
                     size="small"
+                    sx={{textTransform: "none"}}
                     onClick={() => {
                       navigator.clipboard.writeText(state.generatedKeys.secretKey)
                     }}>

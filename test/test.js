@@ -115,13 +115,34 @@ contract('CertificatesStorage', ([issuer, owner]) => {
       result = await certificatesStorage.getUserCertificatesIDs(owner, {from: owner})
     })
 
-    it('should return user certificates', async () => {
+    it('should return user certificates IDs', async () => {
       // SUCCESS
       assert.equal(result.length, 1, 'array length is correct')
       assert.equal(result[0], 1, 'array items are correct')
 
       // FAILURE: Passed address must exist
       await certificatesStorage.getUserCertificatesIDs('', {from: owner}).should.be.rejected;
+    });
+  })
+
+  describe('get user certificates', async () => {
+    let result
+    const ipfsHash = '7890'
+
+    before(async () => {
+      result = await certificatesStorage.getCertificates({from: owner})
+    })
+
+    it('should return user certificates', async () => {
+      // SUCCESS
+      assert.equal(result.length, 1, 'array length is correct')
+
+      let certificate = result[0]
+      assert.equal(certificate.id, 1, 'id is correct')
+      assert.equal(certificate.issuer, issuer, 'issuer address is correct')
+      assert.equal(certificate.owner, owner, 'owner address is correct')
+      assert.equal(certificate.ipfsHash, ipfsHash, 'ipfsHash amount is correct')
+      assert.equal(certificate.isAccepted, true, 'isAccepted is correct')
     });
   })
 })
@@ -150,6 +171,11 @@ contract('PublicKeysProvider', ([deployer]) => {
     it('has a certificates authority address', async () => {
       const deployerAddress = await publicKeysProvider.certificatesAuthority()
       assert.equal(deployerAddress, deployer, 'certificates authority address is correct')
+    })
+
+    it('has a certificates authority name', async () => {
+      const authorityName = await publicKeysProvider.authorityName()
+      assert.equal(authorityName, "Government", 'certificates authority name is correct')
     })
   })
 

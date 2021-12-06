@@ -91,7 +91,6 @@ contract CertificatesStorage {
         emit CertificateAccepted(_id, certificate.issuer, certificate.owner, _ipfsHash, certificate.isAccepted);
     }
 
-    // todo (no tests yet)
     function getCertificates() public view returns (Certificate[] memory){
         // Make sure msg.sender exists
         require(msg.sender != address(0x0));
@@ -106,32 +105,4 @@ contract CertificatesStorage {
 
         return userCertificates;
     }
-
-    // todo to delete (no testing)
-//    function getAwaitingCertificates() public view returns (string[] memory){
-//        // Make sure msg.sender exists
-//        require(msg.sender != address(0x0));
-//
-//        uint numberOfCertificates = 0;
-//
-//        // Finding how many certificates awaits for acceptance
-//        for (uint i = 0; i < certificatesCount; i++) {
-//            if(certificates[userCertificatesIDs[msg.sender][i]].isAccepted == false){
-//                numberOfCertificates ++;
-//            }
-//        }
-//
-//        string[] memory ipfsHashes = new string[](numberOfCertificates);
-//
-//        // Getting proper certificates
-//        uint counter = 0;
-//        for (uint i = 0; i < certificatesCount; i++) {
-//            if(certificates[userCertificatesIDs[msg.sender][i]].isAccepted == false){
-//                ipfsHashes[counter] = certificates[userCertificatesIDs[msg.sender][i]].ipfsHash;
-//                counter ++;
-//            }
-//        }
-//
-//        return ipfsHashes;
-//    }
 }

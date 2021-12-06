@@ -3,5 +3,5 @@ const PublicKeysProvider = artifacts.require("PublicKeysProvider");
 
 module.exports = function (deployer) {
   deployer.deploy(CertificatesStorage);
-  deployer.deploy(PublicKeysProvider);
+  deployer.deploy(PublicKeysProvider, "Government");
 };

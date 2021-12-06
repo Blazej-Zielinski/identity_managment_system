@@ -13,15 +13,16 @@ const defaultState = (fields) => {
   return fields.reduce((obj, item) => {
     return {
       ...obj,
-      [item]: "",
+      [item]: {value: "", isValid: true},
     };
   }, initialValue);
 }
 
 export default function CertificateForm({address, type, fields}) {
-  const [state, setState] = useState(defaultState(fields))
-  const [receiverAddress, setReceiverAddress] = useState("0xA40CfeAb2Fd477f0da91dF4481AC5B6944C6BF91")
-  const [snackbarOpen, setSnackbarOpen] = useState(false)
+  const textFields = [...fields, "receiverAddress"]
+  const [state, setState] = useState(defaultState(textFields))
+  const [successSnackbarOpen, setSuccessSnackbarOpen] = useState(false)
+  const [errorSnackbarOpen, setErrorSnackbarOpen] = useState(false)
   const {certificateStorage, keysProvider} = useContext(CertificatesContext)
   const [cookie] = useCookies([COOKIE_NAME]);
 
@@ -29,18 +30,73 @@ export default function CertificateForm({address, type, fields}) {
     const value = evt.target.value;
     setState({
       ...state,
-      [evt.target.name]: value
+      [evt.target.name]: {...state[evt.target.name], value}
     });
   }
 
+  function validateInput() {
+    let isInputValid = true
+
+    for (const [key, el] of Object.entries(state)) {
+      if (el.value === "") {
+        isInputValid = false
+        setState(prevState => ({
+          ...prevState,
+          [key]: {...prevState[key], isValid: false}
+        }))
+      } else {
+        setState(prevState => ({
+          ...prevState,
+          [key]: {...prevState[key], isValid: true}
+        }))
+      }
+    }
+
+    const regex = /^(0x)([A-Fa-f0-9]{40})$/
+    if(!regex.test(state.receiverAddress.value)) {
+      isInputValid = false
+      setState(prevState => ({
+        ...prevState,
+        receiverAddress: {...prevState.receiverAddress, isValid: false}
+      }))
+    } else {
+      setState(prevState => ({
+        ...prevState,
+        receiverAddress: {...prevState.receiverAddress, isValid: true}
+      }))
+    }
+
+    return isInputValid
+  }
+
   async function sendCertificate() {
+    // checking if input is valid
+    if (!validateInput()) return
+
     // Getting receiver public key
+    const receiverAddress = state.receiverAddress.value
     const receiverPublicKey = await keysProvider.methods.publicKeys(receiverAddress).call()
     const authorityPrivateKey = cookie[COOKIE_NAME]
 
-    const certificate = {type, state}
+    // If user with this address doesnt exit
+    if(receiverPublicKey === "") {
+      setErrorSnackbarOpen(true)
+      setState(prevState => ({
+        ...prevState,
+        receiverAddress: {...prevState.receiverAddress, isValid: false}
+      }))
+      return
+    }
 
-    // Encrypt certificate todo change getting sender private key
+    // Getting only input values from state
+    const inputsValues = {}
+    for (const key of fields) {
+      inputsValues[key] = state[key].value
+    }
+
+    const certificate = {type, state: inputsValues}
+
+    // Encrypt certificate
     const encryptedCertificate = encryptASYN(certificate, receiverPublicKey, authorityPrivateKey)
 
     // Create sender signature
@@ -52,9 +108,8 @@ export default function CertificateForm({address, type, fields}) {
     certificateStorage.methods.createCertificate(receiverAddress, cid.path)
       .send({from: address})
       .on('transactionHash', () => {
-        setSnackbarOpen(true)
-        setReceiverAddress("")
-        setState(defaultState(fields))
+        setSuccessSnackbarOpen(true)
+        setState(defaultState(textFields))
       })
   }
 
@@ -62,11 +117,12 @@ export default function CertificateForm({address, type, fields}) {
     <Box sx={{display: "flex", flexDirection: "column", alignItems: "center", mt: 2}}>
       <Grid container spacing={5} sx={{width: "70%", maxWidth: 1000}}>
         {
-          fields.map((el, idx) =>
+          textFields.map((el, idx) =>
             <Grid item xs={6} key={idx}>
               <TextField
                 required
-                value={state[el]}
+                error={!state[el].isValid}
+                value={state[el].value}
                 name={el}
                 label={camelcaseToWords(el)}
                 onChange={handleChange}
@@ -74,16 +130,6 @@ export default function CertificateForm({address, type, fields}) {
               />
             </Grid>)
         }
-        <Grid item xs={6}>
-          <TextField
-            required
-            value={receiverAddress}
-            name="receiverAddress"
-            onChange={evt => setReceiverAddress(evt.target.value)}
-            label="Receiver address"
-            sx={{width: "100%"}}
-          />
-        </Grid>
       </Grid>
 
       <Grid container spacing={5} justifyContent="center" sx={{width: "70%", maxWidth: 1000, mt: 0}}>
@@ -98,17 +144,31 @@ export default function CertificateForm({address, type, fields}) {
         </Grid>
       </Grid>
 
-      {/*Snackbar*/}
+      {/*Success Snackbar*/}
       <Snackbar
-        open={snackbarOpen}
+        open={successSnackbarOpen}
         autoHideDuration={3000}
-        onClose={() => setSnackbarOpen(false)}>
+        onClose={() => setSuccessSnackbarOpen(false)}>
         <Alert
-          onClose={() => setSnackbarOpen(false)}
+          onClose={() => setSuccessSnackbarOpen(false)}
           severity="success"
           variant="filled"
           sx={{width: '100%'}}>
           Certificate Send
+        </Alert>
+      </Snackbar>
+
+      {/*Success Snackbar*/}
+      <Snackbar
+        open={errorSnackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setErrorSnackbarOpen(false)}>
+        <Alert
+          onClose={() => setErrorSnackbarOpen(false)}
+          severity={"error"}
+          variant="filled"
+          sx={{width: '100%'}}>
+          No such user exists
         </Alert>
       </Snackbar>
     </Box>

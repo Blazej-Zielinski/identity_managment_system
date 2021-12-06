@@ -1,4 +1,4 @@
-import React, {useState, useContext} from "react";
+import React, {useState,useEffect, useContext} from "react";
 import {styled} from '@mui/material/styles';
 import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
@@ -38,12 +38,16 @@ const ExpandMore = styled((props) => {
   }),
 }));
 
-export default function Certificate({id, address, data, dispatch= undefined, isCertificateAccepted = true}) {
+export default function Certificate({address, data, dispatch= undefined, isCertificateAccepted = true}) {
   const [expanded, setExpanded] = useState(false)
   const [openDialog, setOpenDialog] = useState(false)
   const [snackbarOpen, setSnackbarOpen] = useState(false)
   const {certificateStorage} = useContext(CertificatesContext)
   const [cookie] = useCookies([COOKIE_NAME]);
+
+  useEffect(() => {
+    console.log(data)
+  })
 
   async function acceptCertificate() {
     const {decryptedCertificate, signature, nonce, id} = data
@@ -137,8 +141,7 @@ export default function Certificate({id, address, data, dispatch= undefined, isC
                 onClick={() => {
                   navigator.clipboard.writeText("")
                 }}>
-                {/*todo write organization name*/}
-                {`Organization`}
+                {data.authorityName}
               </Button>
             </Tooltip>
           </Paper>
@@ -150,6 +153,7 @@ export default function Certificate({id, address, data, dispatch= undefined, isC
               <Button
                 variant="text"
                 size="small"
+                sx={{textTransform: "none"}}
                 onClick={() => {
                   navigator.clipboard.writeText(data.signature)
                 }}>

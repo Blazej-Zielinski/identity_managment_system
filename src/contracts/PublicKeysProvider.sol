@@ -6,7 +6,9 @@ contract PublicKeysProvider {
 
     // certificates sign by this address are authentic
     address public certificatesAuthority;
-    // todo maybe add certificatesAuthority name
+
+    //certificates Authority name
+    string public authorityName;
 
     // public keys
     mapping(address => string) public publicKeys;
@@ -15,8 +17,9 @@ contract PublicKeysProvider {
         string publicKey
     );
 
-    constructor() {
+    constructor(string memory _authorityName) {
         certificatesAuthority = msg.sender;
+        authorityName = _authorityName;
     }
 
     function addKey(string memory _publicKey) public {
