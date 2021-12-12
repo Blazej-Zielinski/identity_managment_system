@@ -1,4 +1,4 @@
-import React, {useState,useEffect, useContext} from "react";
+import React, {useState, useContext} from "react";
 import {styled} from '@mui/material/styles';
 import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
@@ -45,9 +45,6 @@ export default function Certificate({address, data, dispatch= undefined, isCerti
   const {certificateStorage} = useContext(CertificatesContext)
   const [cookie] = useCookies([COOKIE_NAME]);
 
-  useEffect(() => {
-    console.log(data)
-  })
 
   async function acceptCertificate() {
     const {decryptedCertificate, signature, nonce, id} = data
