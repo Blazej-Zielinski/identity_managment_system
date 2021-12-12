@@ -44,7 +44,7 @@ contract('CertificatesStorage', ([issuer, owner]) => {
       assert.equal(event.id.toNumber(), certificatesCount.toNumber(), 'id is correct')
       assert.equal(event.issuer, issuer, 'issuer address is correct')
       assert.equal(event.owner, owner, 'owner address is correct')
-      assert.equal(event.ipfsHash, ipfsHash, 'ipfsHash amount is correct')
+      assert.equal(event.ipfsHash, ipfsHash, 'ipfsHash is correct')
       assert.equal(event.isAccepted, false, 'isAccepted is correct')
 
       // FAILURE: Certificate must have owner
@@ -60,17 +60,17 @@ contract('CertificatesStorage', ([issuer, owner]) => {
       assert.equal(certificate.id.toNumber(), certificatesCount.toNumber(), 'id is correct')
       assert.equal(certificate.issuer, issuer, 'issuer address is correct')
       assert.equal(certificate.owner, owner, 'owner address is correct')
-      assert.equal(certificate.ipfsHash, ipfsHash, 'ipfsHash amount is correct')
+      assert.equal(certificate.ipfsHash, ipfsHash, 'ipfsHash is correct')
       assert.equal(certificate.isAccepted, false, 'isAccepted is correct')
     })
   })
 
   describe('accept certificate', async () => {
     let result, certificatesCount, userCertificatesIDs
-    const ipfsHash = '7890'
+    const ipfsHash = '123456'
 
     before(async () => {
-      result = await certificatesStorage.acceptCertificate(1, ipfsHash, {from: owner})
+      result = await certificatesStorage.acceptCertificate(1, {from: owner})
       certificatesCount = await certificatesStorage.certificatesCount()
       userCertificatesIDs = await certificatesStorage.userCertificatesIDs(owner, 0)
     })
@@ -84,7 +84,7 @@ contract('CertificatesStorage', ([issuer, owner]) => {
       assert.equal(event.id.toNumber(), certificatesCount.toNumber(), 'id is correct')
       assert.equal(event.issuer, issuer, 'issuer address is correct')
       assert.equal(event.owner, owner, 'owner address is correct')
-      assert.equal(event.ipfsHash, ipfsHash, 'ipfsHash amount is correct')
+      assert.equal(event.ipfsHash, ipfsHash, 'ipfsHash is correct')
       assert.equal(event.isAccepted, true, 'isAccepted is correct')
 
       // FAILURE: Passed id must be correct
@@ -103,7 +103,7 @@ contract('CertificatesStorage', ([issuer, owner]) => {
       assert.equal(certificate.id.toNumber(), certificatesCount.toNumber(), 'id is correct')
       assert.equal(certificate.issuer, issuer, 'issuer address is correct')
       assert.equal(certificate.owner, owner, 'owner address is correct')
-      assert.equal(certificate.ipfsHash, ipfsHash, 'ipfsHash amount is correct')
+      assert.equal(certificate.ipfsHash, ipfsHash, 'ipfsHash is correct')
       assert.equal(certificate.isAccepted, true, 'isAccepted is correct')
     })
   })
@@ -127,7 +127,7 @@ contract('CertificatesStorage', ([issuer, owner]) => {
 
   describe('get user certificates', async () => {
     let result
-    const ipfsHash = '7890'
+    const ipfsHash = '123456'
 
     before(async () => {
       result = await certificatesStorage.getCertificates({from: owner})
@@ -141,7 +141,7 @@ contract('CertificatesStorage', ([issuer, owner]) => {
       assert.equal(certificate.id, 1, 'id is correct')
       assert.equal(certificate.issuer, issuer, 'issuer address is correct')
       assert.equal(certificate.owner, owner, 'owner address is correct')
-      assert.equal(certificate.ipfsHash, ipfsHash, 'ipfsHash amount is correct')
+      assert.equal(certificate.ipfsHash, ipfsHash, 'ipfsHash is correct')
       assert.equal(certificate.isAccepted, true, 'isAccepted is correct')
     });
   })

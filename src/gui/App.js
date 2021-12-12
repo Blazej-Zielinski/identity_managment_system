@@ -13,7 +13,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
-import {createsKeyPair, decryptASYN, decryptSYM, validatePrivateKey, verifySignature} from "./utils/CryptoFunctions";
+import {createsKeyPair, decryptASYN, validatePrivateKey, verifySignature} from "./utils/CryptoFunctions";
 import {nextWeek} from "./utils/DateFunctions";
 import Typography from "@mui/material/Typography";
 import {Alert, FormHelperText, Paper, Snackbar, TextField, Tooltip} from "@mui/material";
@@ -175,48 +175,22 @@ function App() {
       // Getting issuer name ( Authority name )
       const authorityName = await keysProvider.methods.authorityName().call()
 
-      if (certificate.isAccepted) {
-        // certificates encrypted by user
+      // Getting encrypted certificate from ipfs
+      axios.get(`https://ipfs.infura.io/ipfs/${certificate.ipfsHash}`)
+        .then(response => {
+          const {encryptedCertificate, signature} = response.data
 
-        // Getting encrypted certificate from ipfs
-        axios.get(`https://ipfs.infura.io/ipfs/${certificate.ipfsHash}`)
-          .then(response => {
-            const encryptedCertificate = response.data
+          const decryptedCertificate = decryptASYN(encryptedCertificate, issuerPublicKey, userPrivateKey)
+          const isCertificateVerify = verifySignature(decryptedCertificate, signature, issuerPublicKey)
 
-            const {decryptedCertificate, signature, nonce} = decryptSYM(encryptedCertificate, userPrivateKey)
-            const isCertificateVerify = verifySignature(decryptedCertificate, signature, issuerPublicKey)
+          // check if signature is correct
+          if (!isCertificateVerify) return
 
-            // check if signature is correct
-            if (!isCertificateVerify) return
-
-            // Add only certificates with correct signature
-            dispatch({
-              type: ACTIONS.SET_CERTIFICATES,
-              payload: {id: certificate.id, decryptedCertificate, signature, nonce, authorityName}
-            })
-          })
-
-      } else {
-        // new certificates, encrypted by certificates authority
-
-        // Getting encrypted certificate from ipfs
-        axios.get(`https://ipfs.infura.io/ipfs/${certificate.ipfsHash}`)
-          .then(response => {
-            const {encryptedCertificate, signature} = response.data
-
-            const decryptedCertificate = decryptASYN(encryptedCertificate, issuerPublicKey, userPrivateKey)
-            const isCertificateVerify = verifySignature(decryptedCertificate, signature, issuerPublicKey)
-
-            // check if signature is correct
-            if (!isCertificateVerify) return
-
-            // Add only certificates with correct signature
-            dispatch({
-              type: ACTIONS.SET_AWAITING_CERTIFICATES,
-              payload: {id: certificate.id, decryptedCertificate, signature, nonce: encryptedCertificate.nonce, authorityName}
-            })
-          })
-      }
+          // Add only certificates with correct signature
+          const type = certificate.isAccepted ? ACTIONS.SET_CERTIFICATES : ACTIONS.SET_AWAITING_CERTIFICATES
+          const payload = {id: certificate.id, decryptedCertificate, signature, nonce: encryptedCertificate.nonce, authorityName}
+          dispatch({type, payload})
+        })
     }
   }
 

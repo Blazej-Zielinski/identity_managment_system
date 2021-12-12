@@ -64,15 +64,13 @@ contract CertificatesStorage {
         return userCertificatesIDs[_userAddress];
     }
 
-    function acceptCertificate(uint _id, string memory _ipfsHash) public {
+    function acceptCertificate(uint _id) public {
         // Make sure msg.sender exists
         require(msg.sender != address(0x0));
 
         // Make sure the _id is correct
         require(_id > 0 && _id <= certificatesCount);
 
-        // Make sure the data hash exists
-        require(bytes(_ipfsHash).length > 0);
 
         // Get proper certificate
         Certificate memory certificate = certificates[_id];
@@ -81,14 +79,13 @@ contract CertificatesStorage {
         require(msg.sender == certificate.owner);
 
         // Changes certificate attributes
-        certificate.ipfsHash = _ipfsHash;
         certificate.isAccepted = true;
 
         // Update certificate
         certificates[_id] = certificate;
 
         // Trigger an event
-        emit CertificateAccepted(_id, certificate.issuer, certificate.owner, _ipfsHash, certificate.isAccepted);
+        emit CertificateAccepted(_id, certificate.issuer, certificate.owner, certificate.ipfsHash, certificate.isAccepted);
     }
 
     function getCertificates() public view returns (Certificate[] memory){
