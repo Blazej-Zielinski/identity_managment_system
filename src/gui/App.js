@@ -108,7 +108,7 @@ function App() {
     const dataCS = CertificatesStorage.networks[networkId]
 
     if (dataKP && dataCS) {
-      // getting keysProvider certificate
+      // getting keysProvider contract
       const keysProvider = new web3.eth.Contract(KeysProvider.abi, dataKP.address)
       dispatch({type: ACTIONS.SET_KEYS_PROVIDER_CERTIFICATE, payload: keysProvider})
 
@@ -148,10 +148,10 @@ function App() {
     const dataKP = KeysProvider.networks[networkId]
     const dataCS = CertificatesStorage.networks[networkId]
 
-    // getting keysProvider certificate
+    // getting keysProvider contract
     const keysProvider = new web3.eth.Contract(KeysProvider.abi, dataKP.address)
 
-    // getting certificatesStorage certificate
+    // getting certificatesStorage contract
     const certificatesStorage = new web3.eth.Contract(CertificatesStorage.abi, dataCS.address)
     dispatch({type: ACTIONS.SET_CERTIFICATES_STORAGE_CERTIFICATE, payload: certificatesStorage})
 
