@@ -21,10 +21,7 @@ import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import {SizedAvatar} from "../utils/StyledComponents";
-import {ipfs,CertificatesContext} from "../App";
-import {encryptSYM} from "../utils/CryptoFunctions";
-import {useCookies} from "react-cookie";
-import {COOKIE_NAME} from "../assets/CookieName";
+import {CertificatesContext} from "../App";
 import {ACTIONS} from "../assets/AppReducer";
 
 const ExpandMore = styled((props) => {
@@ -43,20 +40,12 @@ export default function Certificate({address, data, dispatch= undefined, isCerti
   const [openDialog, setOpenDialog] = useState(false)
   const [snackbarOpen, setSnackbarOpen] = useState(false)
   const {certificateStorage} = useContext(CertificatesContext)
-  const [cookie] = useCookies([COOKIE_NAME]);
 
 
   async function acceptCertificate() {
-    const {decryptedCertificate, signature, nonce, id} = data
-    const userPrivateKey = cookie[COOKIE_NAME]
+    const {id} = data
 
-    // User encrypts certificate
-    const encryptedData = encryptSYM({decryptedCertificate, signature, nonce}, userPrivateKey)
-
-    // Adding certificate to ipfs
-    const cid = await ipfs.add(JSON.stringify(encryptedData))
-
-    certificateStorage.methods.acceptCertificate(id, cid.path)
+    certificateStorage.methods.acceptCertificate(id)
       .send({from: address})
       .on('transactionHash', () => {
         setSnackbarOpen(true)
